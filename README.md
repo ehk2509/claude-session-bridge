@@ -128,3 +128,10 @@ If you use **Claude Code's graphical VS Code extension** rather than its CLI, us
 **Simplest account switch:** leave `~/.claude` as the same session storage location, close the active conversation, sign out and sign in through Claude Code (`/logout`, `/login`), then select your saved conversation in the panel's Session history. No transcript import or account-token copying is necessary. If you intentionally isolate accounts with different `CLAUDE_CONFIG_DIR` folders, note that the VS Code session picker can have compatibility problems with those folders; consult the [companion extension limitations](vscode-extension/README.md). The CLI's cross-profile `--fork-session` workflow is *not* an automatic VS Code chat-panel handoff.
 
 Official references: [Claude Code in VS Code](https://code.claude.com/docs/en/vs-code), especially **Resume past conversations**, **Launch a VS Code tab from other tools**, and **Extension settings**.
+
+
+## VS Code graphical extension (beta 0.2.0)
+
+If you use the **official Claude Code VS Code chat panel**, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It offers a searchable session picker and a guided, resumable handoff that makes a private transcript backup before the user signs out and in through Claude's own interface.
+
+Download the installable VSIX artifact from the **VS Code VSIX** GitHub Actions workflow, or build with `cd vscode-extension && npm run package:vsix`. Account authentication remains manual; session restoration requires the source local transcript to be visible to Claude's active configuration. The bridge verifies neither a changed identity nor successful restoration automatically.

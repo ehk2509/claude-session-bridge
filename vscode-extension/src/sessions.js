@@ -30,20 +30,26 @@ export function isInWorkspace(cwd, workspaceFolders) {
   });
 }
 
-async function recordedCwd(filename) {
+async function sessionMetadata(filename) {
   let input;
   try {
     input = await fs.open(filename, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
     const first = Buffer.alloc(256 * 1024);
     const { bytesRead } = await input.read(first, 0, first.byteLength, 0);
+    let cwd = null;
+    let title = null;
     for (const line of first.toString('utf8', 0, bytesRead).split('\n').slice(0, 300)) {
-      if (!line.includes('"cwd"')) continue;
+      if (!line.includes('\"cwd\"') && !line.includes('\"message\"')) continue;
       try {
         const record = JSON.parse(line);
-        if (typeof record.cwd === 'string' && path.isAbsolute(record.cwd)) return record.cwd;
+        if (!cwd && typeof record.cwd === 'string' && path.isAbsolute(record.cwd)) cwd = record.cwd;
+        if (!title && record.type === 'user' && typeof record.message?.content === 'string') {
+          title = record.message.content.replace(/[\x00-\x1f]+/g, ' ').trim().slice(0, 90) || null;
+        }
       } catch { /* Ignore incomplete or non-JSON records. */ }
+      if (cwd && title) break;
     }
-    return null;
+    return { cwd, title };
   } finally { await input?.close(); }
 }
 
@@ -63,9 +69,9 @@ export async function listLocalSessions(configDir, workspaces) {
       const filename = path.join(dirname, file.name);
       const stat = await fs.lstat(filename);
       if (!stat.isFile() || stat.size === 0) continue;
-      const cwd = await recordedCwd(filename);
+      const { cwd, title } = await sessionMetadata(filename);
       if (!isInWorkspace(cwd, workspaces)) continue;
-      results.push({ id: file.name.slice(0, -6), filename, cwd, modified: stat.mtime, bytes: stat.size });
+      results.push({ id: file.name.slice(0, -6), filename, cwd, title, modified: stat.mtime, bytes: stat.size });
     }
   }
   return results.sort((a, b) => b.modified.getTime() - a.modified.getTime());

@@ -1,46 +1,37 @@
 {
   "name": "claude-session-bridge-vscode",
   "displayName": "Claude Session Bridge",
-  "description": "Browse, back up and reopen local Claude Code sessions inside VS Code, including after signing into a different account.",
-  "version": "0.1.0",
+  "description": "Back up and resume Claude Code conversations after signing in with another account, directly in VS Code.",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "publisher": "ehk2509",
-  "engines": {
-    "vscode": "^1.94.0"
-  },
+  "categories": ["Other"],
+  "keywords": ["Claude Code", "sessions", "handoff", "backup", "account switch"],
+  "extensionKind": ["workspace"],
+  "engines": { "vscode": "^1.94.0" },
   "main": "./src/extension.js",
   "activationEvents": [
     "onCommand:claudeSessionBridge.resume",
     "onCommand:claudeSessionBridge.backup",
-    "onCommand:claudeSessionBridge.switchAccount"
+    "onCommand:claudeSessionBridge.switchAccount",
+    "onCommand:claudeSessionBridge.handoff",
+    "onCommand:claudeSessionBridge.finishHandoff"
   ],
   "contributes": {
     "commands": [
-      {
-        "command": "claudeSessionBridge.resume",
-        "title": "Claude Session Bridge: Resume Local Session",
-        "category": "Claude Session Bridge"
-      },
-      {
-        "command": "claudeSessionBridge.backup",
-        "title": "Claude Session Bridge: Back Up Local Session",
-        "category": "Claude Session Bridge"
-      },
-      {
-        "command": "claudeSessionBridge.switchAccount",
-        "title": "Claude Session Bridge: Switch Account Guide",
-        "category": "Claude Session Bridge"
-      }
+      { "command": "claudeSessionBridge.handoff", "title": "Hand Off Session to Another Account", "category": "Claude Session Bridge" },
+      { "command": "claudeSessionBridge.finishHandoff", "title": "Finish Pending Handoff", "category": "Claude Session Bridge" },
+      { "command": "claudeSessionBridge.resume", "title": "Resume Local Session", "category": "Claude Session Bridge" },
+      { "command": "claudeSessionBridge.backup", "title": "Back Up Local Session", "category": "Claude Session Bridge" },
+      { "command": "claudeSessionBridge.switchAccount", "title": "Switch Account Guide", "category": "Claude Session Bridge" }
     ]
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/extension.js && node --check src/sessions.js && npm test"
+    "check": "node --check src/extension.js && node --check src/sessions.js && node --check src/handoff.js && npm test",
+    "package:vsix": "npx --yes @vscode/vsce@3.9.2 package --no-dependencies --out claude-session-bridge-vscode-0.2.0.vsix"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ehk2509/claude-session-bridge.git"
-  },
+  "repository": { "type": "git", "url": "https://github.com/ehk2509/claude-session-bridge.git" },
   "type": "module"
 }
