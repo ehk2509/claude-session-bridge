@@ -99,7 +99,7 @@ test('missing Claude extension prevents handoff from falsely completing', async 
   assert.equal(env.state.has(PENDING_KEY), true);
   assert.equal(env.opened.length, 0);
   assert.ok(env.messages.some(m => m.includes('Handoff cannot continue safely')));
-  assert.ok(env.outputLines.join('\n').includes('claude-extension')); 
+  assert.ok(env.outputLines.join('\n').includes('claude-extension'));
 });
 
 test('missing backup prevents handoff and keeps pending state', async t => {
@@ -110,7 +110,7 @@ test('missing backup prevents handoff and keeps pending state', async t => {
   assert.equal(env.state.has(PENDING_KEY), true);
   assert.equal(env.opened.length, 0);
   assert.ok(env.messages.some(m => m.includes('Handoff cannot continue safely')));
-  assert.ok(env.outputLines.join('\n').includes('Private backup is missing')); 
+  assert.ok(env.outputLines.join('\n').includes('Private backup is missing'));
 });
 
 
