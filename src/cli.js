@@ -80,7 +80,7 @@ async function projectDirectory(opt, session) {
   if (!(await fs.stat(cwd).catch(() => null))?.isDirectory()) {
     throw new Error(`Project directory does not exist: ${cwd}. Pass --cwd with the current checkout location.`);
   }
-  return cwd;
+  return await fs.realpath(cwd);
 }
 
 async function handoff(registry, session, target, cwdFlag) {
@@ -146,7 +146,7 @@ export async function main(argv) {
     const limit = options['--limit'] === undefined ? 20 : Number(options['--limit']);
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('--limit must be an integer from 1 to 1000');
     const list = await discoverSessions(registry, positional.length ? [positional[0]] : undefined);
-    const cwd = options['--cwd'] && expandHome(options['--cwd']);
+    const cwd = options['--cwd'] && await fs.realpath(expandHome(options['--cwd'])).catch(() => expandHome(options['--cwd']));
     const filtered = cwd ? list.filter(s => matchCwd(s, cwd)) : list;
     if (!filtered.length) return console.log('No matching local sessions found.');
     console.log('PROFILE         UPDATED              SESSION ID                              PROJECT (recorded cwd)');
@@ -185,7 +185,8 @@ export async function main(argv) {
     if (options['--session']) {
       session = pick(list, options['--session']);
     } else {
-      const cwd = expandHome(options['--cwd'] || process.cwd());
+      const providedCwd = expandHome(options['--cwd'] || process.cwd());
+      const cwd = await fs.realpath(providedCwd).catch(() => providedCwd);
       session = list.find(s => matchCwd(s, cwd));
       if (!session) throw new Error(`No session for ${cwd} in source profile(s) ${names.join(', ')}. Use csbridge sessions and --session ID, or --from PROFILE.`);
     }

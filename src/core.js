@@ -91,7 +91,9 @@ export async function sessionCwd(filename) {
       if (!line || !line.includes('"cwd"')) continue;
       try {
         const row = JSON.parse(line);
-        if (typeof row.cwd === 'string' && path.isAbsolute(row.cwd)) return path.resolve(row.cwd);
+        if (typeof row.cwd === 'string' && path.isAbsolute(row.cwd)) {
+          return await fs.realpath(row.cwd).catch(() => path.resolve(row.cwd));
+        }
       } catch { /* incomplete or not JSON */ }
     }
     return null;

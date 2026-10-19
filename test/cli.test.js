@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const bin = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'csbridge-test-'));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'csbridge-test-')));
   t.after(async () => { await fs.rm(root, { recursive: true, force: true }); });
   const work = path.join(root, 'work');
   const personal = path.join(root, 'personal');
