@@ -36,13 +36,14 @@ test('lists only current-workspace sessions newest-first, avoiding symlink file'
   const app = path.join(root, 'app');
   await fs.mkdir(app);
   const base = path.join(dir, 'session-1.jsonl');
-  await fs.writeFile(base, JSON.stringify({ type: 'user', cwd: app }) + '\n');
+  await fs.writeFile(base, JSON.stringify({ type: 'user', cwd: app, message: { content: 'Implement the authentication flow' } }) + '\n');
   await fs.writeFile(path.join(dir, 'other.jsonl'), JSON.stringify({ cwd: '/somewhere-else' }) + '\n');
   await fs.writeFile(path.join(dir, 'empty.jsonl'), '');
   if (process.platform !== 'win32') await fs.symlink(base, path.join(dir, 'evil.jsonl'));
   const sessions = await listLocalSessions(root, [app]);
   assert.equal(sessions.length, 1);
   assert.equal(sessions[0].id, 'session-1');
+  assert.equal(sessions[0].title, 'Implement the authentication flow');
 });
 
 test('private backup is exact and preserves the source', async t => {

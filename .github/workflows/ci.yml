@@ -29,3 +29,22 @@ jobs:
       - run: npm run check
       - run: npm --prefix vscode-extension run check
       - run: npm pack --dry-run
+
+  vscode-vsix:
+    name: Package VS Code VSIX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm --prefix vscode-extension run check
+      - name: Package with official VS Code packager
+        working-directory: vscode-extension
+        run: npm run package:vsix
+      - name: Upload installable extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-session-bridge-vscode-vsix
+          path: vscode-extension/claude-session-bridge-vscode-0.2.0.vsix
+          if-no-files-found: error

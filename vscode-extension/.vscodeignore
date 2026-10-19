@@ -1,0 +1,11 @@
+**/.DS_Store
+**/.git/**
+**/.github/**
+**/.claude/**
+**/*.jsonl
+**/*.vsix
+**/node_modules/**
+**/test/**
+**/coverage/**
+**/*.log
+**/.env*

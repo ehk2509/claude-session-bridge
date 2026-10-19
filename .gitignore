@@ -10,3 +10,6 @@ coverage/
 .claude-*/
 profiles.json
 backups/
+
+# VS Code packaged builds
+*.vsix
