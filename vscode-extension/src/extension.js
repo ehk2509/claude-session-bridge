@@ -1,128 +1,176 @@
 import os from 'node:os';
 import path from 'node:path';
-import fs from 'node:fs/promises';
-import { claudeConfigPath, listLocalSessions, backupLocalSession, sessionLink } from './sessions.js';
+import { claudeConfigPath, listLocalSessions, backupLocalSession, hashLocalFile, sessionLink } from './sessions.js';
 import { PENDING_KEY, createPendingHandoff, validatePendingHandoff, configMatches } from './handoff.js';
+import { inspectHandoff, formatDiagnosticReport } from './diagnostics.js';
 
-// Injecting the VS Code API keeps this integration testable without the VS Code host.
+/** VS Code companion; never signs in, modifies Claude auth, or rewrites transcripts. */
 export async function activate(context, injectedVscode, services = {}) {
   const imported = injectedVscode ? null : await import('vscode');
   const vscode = injectedVscode || imported.default || imported;
   const listSessions = services.listLocalSessions || listLocalSessions;
   const saveBackup = services.backupLocalSession || backupLocalSession;
+  const hashBackup = services.hashLocalFile || hashLocalFile;
+  const inspect = services.inspectHandoff || inspectHandoff;
   const workspaceDirs = () => (vscode.workspace.workspaceFolders || [])
-    .filter(folder => folder.uri.scheme === 'file')
-    .map(folder => folder.uri.fsPath);
+    .filter(folder => folder.uri.scheme === 'file').map(folder => folder.uri.fsPath);
   const configDir = () => claudeConfigPath(
     vscode.workspace.getConfiguration('claudeCode').get('environmentVariables'), os.homedir());
+  const claudeInstalled = () => Boolean(vscode.extensions.getExtension('anthropic.claude-code'));
+  const pendingRecord = () => context.globalState.get(PENDING_KEY);
+  const output = vscode.window.createOutputChannel?.('Claude Session Bridge');
+  if (output) context.subscriptions.push(output);
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  status.text = '$(history) Claude handoff ready';
-  status.tooltip = 'Complete the backed-up Claude Code session handoff';
-  status.command = 'claudeSessionBridge.finishHandoff';
   context.subscriptions.push(status);
   function updateStatus() {
-    if (context.globalState.get(PENDING_KEY)) status.show();
-    else status.hide();
+    const pending = pendingRecord();
+    status.text = pending ? '$(history) Finish Claude handoff' : '$(arrow-left-right) Claude handoff';
+    status.tooltip = pending ? 'Finish the saved cross-account handoff' : 'Back up and switch your Claude Code session';
+    status.command = pending ? 'claudeSessionBridge.finishHandoff' : 'claudeSessionBridge.quickHandoff';
+    status.show();
   }
   updateStatus();
 
-  async function chooseSession() {
-    const workspaces = workspaceDirs();
-    if (!workspaces.length) {
+  async function availableSessions() {
+    const folders = workspaceDirs();
+    if (!folders.length) {
       await vscode.window.showWarningMessage('Open a local project folder in VS Code before browsing Claude Code sessions.');
       return null;
     }
-    const sessions = await listSessions(configDir(), workspaces);
+    const sessions = await listSessions(configDir(), folders);
     if (!sessions.length) {
       await vscode.window.showWarningMessage('No Claude Code conversations found for this workspace. Check Claude Code Session history.');
       return null;
     }
+    return sessions;
+  }
+
+  async function sessionPicker(sessions) {
     const chosen = await vscode.window.showQuickPick(sessions.map(s => ({
       label: s.title || s.id,
       description: `${s.modified.toLocaleString()} · ${path.basename(s.cwd)}`,
       detail: `Session ${s.id} · ${formatSize(s.bytes)}`,
       session: s
-    })), {
-      placeHolder: 'Search and select a Claude Code conversation',
-      matchOnDescription: true, matchOnDetail: true
-    });
+    })), { placeHolder: 'Search and select a Claude Code conversation', matchOnDescription: true, matchOnDetail: true });
     return chosen?.session || null;
   }
 
-  async function openNativeSession(sessionId, sourceConfig) {
-    if (!vscode.extensions.getExtension('anthropic.claude-code')) {
+  async function chooseSession() {
+    const sessions = await availableSessions();
+    return sessions && sessionPicker(sessions);
+  }
+
+  /** Recent means newest transcript write, not an authenticated active-session ID. */
+  async function chooseRecentSession() {
+    const sessions = await availableSessions();
+    if (!sessions) return null;
+    if (workspaceDirs().length !== 1) return sessionPicker(sessions); // Never guess across workspace roots.
+    const recent = sessions[0];
+    const choice = await vscode.window.showInformationMessage(
+      `Most recently saved conversation: ${recent.title || recent.id} (${recent.modified.toLocaleString()}). ` +
+      'This may not be the currently open Claude Code chat. Confirm before backing up.',
+      { modal: true }, 'Use Most Recent', 'Choose Session'
+    );
+    if (choice === 'Use Most Recent') return recent;
+    if (choice === 'Choose Session') return sessionPicker(sessions);
+    return null;
+  }
+
+  async function diagnose({ show = true } = {}) {
+    const result = await inspect({
+      pending: pendingRecord(), workspaces: workspaceDirs(), configDir: configDir(),
+      claudeInstalled: claudeInstalled(), digest: hashBackup
+    });
+    if (show) {
+      const report = formatDiagnosticReport(result, {
+        remote: Boolean(vscode.env.remoteName), version: '0.3.0'
+      });
+      output?.clear();
+      output?.appendLine(report);
+      output?.show(true);
+      if (!output) await vscode.window.showInformationMessage(report);
+    }
+    return result;
+  }
+
+  async function openNativeSession(id, sourceConfig) {
+    if (!claudeInstalled()) {
       await vscode.window.showErrorMessage('Install the official Anthropic Claude Code VS Code extension first.');
       return false;
     }
     if (!configMatches(configDir(), sourceConfig)) {
       const action = await vscode.window.showWarningMessage(
-        'The active Claude configuration directory differs from the source. Claude Code may not find this session and may open an empty conversation. No session data will be copied or rewritten.',
+        'The active Claude configuration directory differs from the source. Claude Code may open an empty chat. No data will be copied or rewritten.',
         { modal: true }, 'Try to Resume'
       );
       if (action !== 'Try to Resume') return false;
     }
-    // Official URI protocol; the session must belong to the current VS Code workspace.
-    const opened = await vscode.env.openExternal(vscode.Uri.parse(sessionLink(sessionId)));
+    const opened = await vscode.env.openExternal(vscode.Uri.parse(sessionLink(id)));
     if (!opened) {
-      await vscode.window.showWarningMessage('Claude Code did not accept the session URL. The backup remains available.');
+      await vscode.window.showWarningMessage('Claude Code did not accept the session URL. The private backup remains available.');
       return false;
     }
     return true;
   }
 
-  async function prepareHandoff() {
-    const selected = await chooseSession();
+  async function prepareHandoff(selected) {
     if (!selected) return;
-    const instruction = await vscode.window.showWarningMessage(
-      'Finish the current Claude Code turn and close the original chat before backing up. A running conversation could change during backup.',
+    const closed = await vscode.window.showWarningMessage(
+      'Finish the Claude Code turn and close the original chat before backing up. A running conversation may change during backup.',
       { modal: true }, 'Session Is Closed'
     );
-    if (instruction !== 'Session Is Closed') return;
-    const existing = context.globalState.get(PENDING_KEY);
-    if (existing) {
+    if (closed !== 'Session Is Closed') return;
+    if (pendingRecord()) {
       const replace = await vscode.window.showWarningMessage(
-        'An earlier handoff is pending. Replace it? Its backup will remain on disk.',
+        'A handoff is already pending. Replace it? The earlier private backup will remain on disk.',
         { modal: true }, 'Replace Pending Handoff'
       );
       if (replace !== 'Replace Pending Handoff') return;
     }
+    // A failed backup or hash leaves the previous pending record untouched.
     const backupPath = await saveBackup(selected);
-    const pending = createPendingHandoff(selected, configDir(), backupPath);
+    const backupSha256 = await hashBackup(backupPath);
+    const pending = createPendingHandoff(selected, configDir(), backupPath, Date.now(), backupSha256);
     await context.globalState.update(PENDING_KEY, pending);
     updateStatus();
-    const answer = await vscode.window.showInformationMessage(
-      `Private backup saved. Now sign out of Claude Code using Settings > Sign out (or /logout), then sign in with your new account. Do not delete ~/.claude. When ready, choose Resume With New Account.`,
+    const action = await vscode.window.showInformationMessage(
+      'Private backup verified. Sign out from the official Claude Code panel and sign in with the destination account. ' +
+      'Keep ~/.claude intact. After sign-in, use Finish Pending Handoff.',
       { modal: true }, 'Resume With New Account', 'Later'
     );
-    if (answer === 'Resume With New Account') await finishHandoff();
+    if (action === 'Resume With New Account') await finishHandoff();
   }
 
   async function finishHandoff() {
-    const pendingRaw = context.globalState.get(PENDING_KEY);
-    if (!pendingRaw) {
-      await vscode.window.showInformationMessage('No handoff is pending. Run Claude Session Bridge: Hand Off Session first.');
+    const raw = pendingRecord();
+    if (!raw) {
+      await vscode.window.showInformationMessage('No handoff is pending. Use Claude Session Bridge: Quick Account Handoff.');
       return;
     }
-    const pending = validatePendingHandoff(pendingRaw, workspaceDirs());
-    if (!(await fs.stat(pending.backupPath).catch(() => null))?.isFile()) {
-      throw new Error('The private transcript backup is missing. Prepare another handoff before resuming.');
+    const pending = validatePendingHandoff(raw, workspaceDirs());
+    const health = await diagnose({ show: false });
+    if (health.status === 'blocked') {
+      await diagnose();
+      await vscode.window.showWarningMessage('Handoff cannot continue safely. Check Claude Session Bridge diagnostics; the pending record was preserved.');
+      return;
     }
-    // Do not rely on account detection: Claude owns authentication and exposes no public account-switch API.
     const signedIn = await vscode.window.showInformationMessage(
-      'Have you signed out of the original Claude account and signed in to the destination account inside the official Claude Code extension?',
+      'Have you signed in with the destination account inside the official Claude Code extension?',
       { modal: true }, 'I Have Signed In'
     );
     if (signedIn !== 'I Have Signed In') return;
     if (!(await openNativeSession(pending.sessionId, pending.sourceConfigDir))) return;
-    const confirmed = await vscode.window.showInformationMessage(
-      'Check Claude Code: does it display the previous conversation and messages? If it opens a blank chat, keep the pending handoff and use the backup for recovery.',
-      { modal: true }, 'History Restored', 'Keep Pending'
+    const restored = await vscode.window.showInformationMessage(
+      'Verify Claude Code displays your previous messages and understands the ongoing task. ' +
+      'If the conversation is empty, keep this handoff pending.',
+      { modal: true }, 'History Restored', 'Keep Pending', 'Show Diagnostics'
     );
-    if (confirmed === 'History Restored') {
+    if (restored === 'Show Diagnostics') await diagnose();
+    if (restored === 'History Restored') {
       await context.globalState.update(PENDING_KEY, undefined);
       updateStatus();
-      await vscode.window.showInformationMessage('Session handoff marked complete. The private backup has been kept.');
+      await vscode.window.showInformationMessage('Session handoff confirmed. Your private backup was retained.');
     }
   }
 
@@ -130,7 +178,7 @@ export async function activate(context, injectedVscode, services = {}) {
     const selected = await chooseSession();
     if (!selected) return;
     if (await openNativeSession(selected.id, configDir())) {
-      await vscode.window.showInformationMessage('Claude Code was asked to open this session. Verify the messages appear before continuing.');
+      await vscode.window.showInformationMessage('Claude Code was asked to open this conversation. Verify previous messages appear.');
     }
   }
 
@@ -141,22 +189,25 @@ export async function activate(context, injectedVscode, services = {}) {
     await vscode.window.showInformationMessage(`Private transcript backup saved: ${destination}`);
   }
 
-  function command(name, handler) {
+  function command(name, fn) {
     context.subscriptions.push(vscode.commands.registerCommand(name, async () => {
-      try { await handler(); }
-      catch (error) { await vscode.window.showErrorMessage(`Claude Session Bridge: ${error.message}`); }
+      try { await fn(); }
+      catch (err) { await vscode.window.showErrorMessage(`Claude Session Bridge: ${err.message}`); }
     }));
   }
+  command('claudeSessionBridge.quickHandoff', async () => prepareHandoff(await chooseRecentSession()));
+  command('claudeSessionBridge.handoff', async () => prepareHandoff(await chooseSession()));
+  command('claudeSessionBridge.finishHandoff', finishHandoff);
+  command('claudeSessionBridge.diagnose', diagnose);
   command('claudeSessionBridge.resume', resume);
   command('claudeSessionBridge.backup', backup);
-  command('claudeSessionBridge.handoff', prepareHandoff);
-  command('claudeSessionBridge.finishHandoff', finishHandoff);
   command('claudeSessionBridge.switchAccount', async () => {
     const choice = await vscode.window.showInformationMessage(
-      'To switch Claude accounts, use the official Claude Code Settings > Sign out then sign in. For a safe handoff with backup, use Hand Off Session.',
-      'Hand Off Session', 'Open Claude Code'
+      'Switch accounts in the official Claude Code Settings → Sign out, then sign in. ' +
+      'For a protected handoff, begin Quick Account Handoff first.',
+      'Quick Account Handoff', 'Open Claude Code'
     );
-    if (choice === 'Hand Off Session') await prepareHandoff();
+    if (choice === 'Quick Account Handoff') await prepareHandoff(await chooseRecentSession());
     if (choice === 'Open Claude Code') await vscode.env.openExternal(vscode.Uri.parse('vscode://anthropic.claude-code/open'));
   });
 }

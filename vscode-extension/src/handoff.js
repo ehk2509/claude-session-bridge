@@ -4,14 +4,14 @@ import path from 'node:path';
 
 export const PENDING_KEY = 'pendingHandoffV1';
 
-export function createPendingHandoff(session, configDir, backupPath, now = Date.now()) {
+export function createPendingHandoff(session, configDir, backupPath, now = Date.now(), backupSha256 = null) {
   if (!session || !session.id || !session.cwd || !session.filename || !backupPath) {
     throw new Error('A local session and successful backup are required');
   }
   return {
     version: 1, sessionId: session.id, cwd: path.resolve(session.cwd),
     sourceFile: session.filename, sourceConfigDir: path.resolve(configDir),
-    backupPath, createdAt: now
+    backupPath, createdAt: now, ...(backupSha256 ? { backupSha256 } : {})
   };
 }
 
@@ -21,7 +21,8 @@ export function validatePendingHandoff(value, workspaceFolders) {
       typeof value.cwd !== 'string' || !path.isAbsolute(value.cwd) ||
       typeof value.sourceConfigDir !== 'string' || !path.isAbsolute(value.sourceConfigDir) ||
       typeof value.sourceFile !== 'string' || !path.isAbsolute(value.sourceFile) ||
-      typeof value.backupPath !== 'string' || !path.isAbsolute(value.backupPath)) {
+      typeof value.backupPath !== 'string' || !path.isAbsolute(value.backupPath) ||
+      (value.backupSha256 != null && !/^[a-f0-9]{64}$/.test(value.backupSha256))) {
     throw new Error('Pending handoff metadata is invalid; prepare another handoff.');
   }
   if (!(workspaceFolders || []).some(folder => equalPath(folder, value.cwd))) {

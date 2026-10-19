@@ -3,14 +3,15 @@ import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 
-export function claudeConfigPath(envVars, home = os.homedir()) {
+export function claudeConfigPath(envVars, home = os.homedir(), hostEnv = process.env) {
   const configured = Array.isArray(envVars)
     ? envVars.find(item => item?.name === 'CLAUDE_CONFIG_DIR')?.value
     : undefined;
-  return typeof configured === 'string' && path.isAbsolute(configured)
-    ? path.normalize(configured)
+  const chosen = configured || hostEnv.CLAUDE_CONFIG_DIR;
+  return typeof chosen === 'string' && path.isAbsolute(chosen)
+    ? path.normalize(chosen)
     : path.join(home, '.claude');
 }
 
@@ -108,4 +109,16 @@ export async function backupLocalSession(session, root = path.join(os.homedir(),
     await Promise.allSettled([source?.close(), target?.close()]);
     if (!finished) await fs.rm(destination, { force: true });
   }
+}
+
+/** SHA-256 of a local regular file without following symlinks. */
+export async function hashLocalFile(filename) {
+  let input;
+  try {
+    input = await fs.open(filename, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+    if (!(await input.stat()).isFile()) throw new Error('Not a regular file');
+    const hash = createHash('sha256');
+    for await (const chunk of input.createReadStream({ autoClose: false })) hash.update(chunk);
+    return hash.digest('hex');
+  } finally { await input?.close(); }
 }
