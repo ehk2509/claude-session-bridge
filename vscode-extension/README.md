@@ -12,6 +12,12 @@ Companion extension for the official Anthropic Claude Code extension. Safely bac
 
 Or install locally with `code --install-extension claude-session-bridge-vscode-0.3.0.vsix`.
 
+## Find the status-bar shortcut
+
+The **VS Code status bar** is the thin strip at the bottom of the editor window, usually with **Claude handoff** on the right. Click it to start the suggested-session workflow. During an unfinished handoff, it changes to **Finish Claude handoff**.
+
+If the bar is hidden, use **View → Appearance → Status Bar**. If the shortcut still is not visible, check that v0.3.0 is installed and enabled, run **Developer: Reload Window**, or use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) to start **Claude Session Bridge: Quick Account Handoff** instead. The status-bar shortcut is optional; the command is equivalent.
+
 ## Fast handoff
 
 1. Finish the current Claude Code turn and **close that chat**. Open `Ctrl+Shift+P` / `Cmd+Shift+P` → **Claude Session Bridge: Quick Account Handoff**, or click the **Claude handoff** status-bar item.
