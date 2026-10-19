@@ -1,0 +1,12 @@
+node_modules/
+coverage/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+# Never commit local Claude data, session backups or credentials
+.claude/
+.claude-*/
+profiles.json
+backups/

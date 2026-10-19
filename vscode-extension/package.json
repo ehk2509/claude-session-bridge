@@ -1,0 +1,46 @@
+{
+  "name": "claude-session-bridge-vscode",
+  "displayName": "Claude Session Bridge",
+  "description": "Browse, back up and reopen local Claude Code sessions inside VS Code, including after signing into a different account.",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "publisher": "ehk2509",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onCommand:claudeSessionBridge.resume",
+    "onCommand:claudeSessionBridge.backup",
+    "onCommand:claudeSessionBridge.switchAccount"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeSessionBridge.resume",
+        "title": "Claude Session Bridge: Resume Local Session",
+        "category": "Claude Session Bridge"
+      },
+      {
+        "command": "claudeSessionBridge.backup",
+        "title": "Claude Session Bridge: Back Up Local Session",
+        "category": "Claude Session Bridge"
+      },
+      {
+        "command": "claudeSessionBridge.switchAccount",
+        "title": "Claude Session Bridge: Switch Account Guide",
+        "category": "Claude Session Bridge"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/extension.js && node --check src/sessions.js && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ehk2509/claude-session-bridge.git"
+  },
+  "type": "module"
+}
