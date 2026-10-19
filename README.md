@@ -1,140 +1,133 @@
 # Claude Session Bridge
 
-> **VS Code companion v0.3.0:** Click the *Claude handoff* status-bar item or run `Claude Session Bridge: Quick Account Handoff` to suggest the latest saved conversation, back it up, sign in manually with the other account, and resume. Use `Claude Session Bridge: Diagnose Session Recovery` if resumption fails. See [VS Code extension documentation](vscode-extension/README.md) and [changelog](CHANGELOG.md).
+**Continue a Claude Code conversation after switching Claude accounts — directly inside VS Code.**
 
+Claude Session Bridge is an open-source, local-first companion for the official **Anthropic Claude Code** extension. It discovers saved conversations for the current workspace, makes a private backup, guides you through signing in to your other account, and asks Claude Code to reopen the same session.
 
-**Keep your Claude Code conversation when you change accounts.** `csbridge` is a local-first, dependency-free Node.js CLI that discovers Claude Code transcripts, creates private backups, and opens a **fork of an existing session** with a different, independently authenticated Claude Code configuration directory.
+> **VS Code extension: v0.3.0 (beta)** · **CLI: v0.1.0 (beta)**
+>
+> Tested successfully by one user on Linux with two Claude accounts: the previous conversation appeared and Claude continued its earlier task. This does **not** guarantee every account, platform, remote environment, or Claude Code version will support the same handoff.
 
-> **v0.1.0 — beta / proof-of-concept.** CLI behavior is covered by automated tests using a mocked Claude executable. Cross-account resumption has **not yet been validated against two real Claude accounts**. Claude Code may change how it reads external session paths. Do not depend on this for mission-critical conversation state without testing it on your installation.
+No credential copying, token rotation, telemetry, cloud synchronization, or automatic account switching. This project is **not affiliated with or endorsed by Anthropic**.
 
-No credential-copying. No login automation. No token rotation. No telemetry. No runtime dependencies.
+## VS Code: install v0.3.0
 
-## Requirements
+You need:
 
-- Node.js 20 or newer
-- Claude Code CLI on your PATH (`claude --version`)
-- Two Claude Code account profiles with **separate configuration directories**, authenticated by Claude Code itself
-- Linux/macOS recommended; Windows is included in the automated CI matrix but cross-account smoke testing is pending
+- VS Code **1.94+** with a Node-capable extension host.
+- Anthropic's **official Claude Code** extension (`anthropic.claude-code`), installed and signed in.
+- The same local project folder that was used for the original conversation.
+- The `claude-session-bridge-vscode-0.3.0.vsix` build from the [GitHub Actions runs](https://github.com/ehk2509/claude-session-bridge/actions). Open a successful **CI** run, scroll to **Artifacts**, download `claude-session-bridge-vscode-vsix`, and extract the VSIX file. This is a build artifact, **not** a Marketplace listing.
 
-## Install from GitHub
+Install through **Extensions** (`Ctrl+Shift+X`) → `...` → **Install from VSIX...**, or:
+
+```bash
+code --install-extension claude-session-bridge-vscode-0.3.0.vsix
+```
+
+Reload VS Code after upgrading. Open the exact project root in which your previous Claude Code session ran.
+
+## Quick account handoff in VS Code
+
+1. **Finish the current Claude response and close the original Claude chat.** The extension cannot take a consistent backup from an actively changing transcript.
+2. Click **Claude handoff** in the status bar, or run `Claude Session Bridge: Quick Account Handoff` from the Command Palette (`Ctrl+Shift+P`; macOS `Cmd+Shift+P`).
+3. **Verify the suggested conversation.** The suggestion is the *most recently written* saved session in the current workspace, **not** a verified active-chat ID. Choose **Use Most Recent** only if it is correct, otherwise choose **Choose Session**.
+4. Confirm **Session Is Closed**. Claude Session Bridge saves a **local, byte-for-byte backup** and records its **SHA-256 digest**. Select **Later** to switch accounts.
+5. In the **official Claude Code panel**, choose **Settings → Sign out** (or `/logout` when supported), then sign in with the other account. **Do not delete `~/.claude`.**
+6. Click **Finish Claude handoff** in the status bar, or run `Claude Session Bridge: Finish Pending Handoff`. Confirm that the destination account is signed in. The bridge asks Claude Code to reopen the stored session by ID.
+7. Confirm that **earlier messages are visible and Claude can continue the previous task**. Choose **History Restored** only then. Otherwise choose **Keep Pending** and run diagnostics.
+
+**Important:** The tool does not sign out or sign in for you. It does not rewrite session files or insert a backup into Claude Code's private storage. Claude Code must be able to resolve the saved session under the current project and configuration.
+
+### Where is the VS Code status bar?
+
+The status bar is the **thin strip along the very bottom of the VS Code window**. Look for **Claude handoff** or **Finish Claude handoff**, normally near the bottom right. The item changes according to whether a handoff is pending.
+
+If it is missing:
+
+1. Enable **View → Appearance → Status Bar**.
+2. Make sure **Claude Session Bridge v0.3.0** is installed and enabled in Extensions.
+3. Run **Developer: Reload Window** from the Command Palette.
+4. Use `Ctrl+Shift+P` → `Claude Session Bridge: Quick Account Handoff` even if the status-bar item is hidden.
+
+## VS Code commands
+
+Run these from the Command Palette (all names start with `Claude Session Bridge:`):
+
+| Command | Purpose |
+| --- | --- |
+| **Quick Account Handoff** | Suggest the latest saved project conversation, confirm, back up and begin a guided handoff |
+| **Hand Off Session to Another Account** | Choose an explicit conversation from searchable local history |
+| **Finish Pending Handoff** | Reopen a saved session after changing account, including after reloading VS Code |
+| **Diagnose Session Recovery** | Check workspace/config mismatch, Claude extension, source transcript, backup and SHA-256 integrity |
+| **Resume Local Session** | Ask Claude Code to reopen an existing local conversation using the current account |
+| **Back Up Local Session** | Take a private snapshot without switching accounts |
+| **Switch Account Guide** | Show official sign-out/sign-in instructions |
+
+Handoffs survive a VS Code window reload. A successful handoff **keeps its private backup** instead of deleting it. Diagnostic reports avoid transcript content, full local paths, credentials and digest values.
+
+## Troubleshooting
+
+**No conversations found.** Open the *same* project root as the original conversation. Confirm that the Claude Code extension uses the same local session/config directory. Changing `CLAUDE_CONFIG_DIR`, moving a project checkout, or working through WSL, SSH or a dev container can affect discovery.
+
+**An empty chat opens after switching.** Don't click **History Restored**. Choose **Keep Pending**, run `Claude Session Bridge: Diagnose Session Recovery`, and check the **Claude Session Bridge** output channel. Opening a session URI does not guarantee Claude Code recovered its messages.
+
+**Claude Code exits with code 1 or requests Terms and Privacy Policy acceptance.** Review and accept the updated terms using Claude Code's **official terminal CLI**, then reload VS Code. If `claude` is not found in your terminal, install the official Claude Code CLI first (see Anthropic's [setup guide](https://code.claude.com/docs/en/setup)). The bridge does not accept terms for you.
+
+**Integrity check failed.** Keep the pending record. Do not trust or delete an altered backup. Create a new handoff only after ensuring the source session is closed; never attach transcript backups to public GitHub issues.
+
+**Old conversations were compacted.** Claude Code may retain a *summary* of earlier turns after context compaction. The bridge cannot restore discarded model context or guarantee all historic tool calls are accessible to the model.
+
+## Optional terminal CLI (v0.1.0)
+
+Use the CLI if you work in a terminal or intentionally manage **separate Claude configuration directories** for multiple accounts. It operates independently from the native VS Code chat-panel handoff.
+
+Requirements: Node.js **20+**, Claude Code CLI on your `PATH`, and account profiles already authenticated in their respective config directories.
 
 ```bash
 git clone https://github.com/ehk2509/claude-session-bridge.git
 cd claude-session-bridge
 npm ci
 npm link
-csbridge doctor
-```
 
-This version is intentionally marked `private: true` to prevent accidental publication to npm before release validation.
-
-## Quick start
-
-```bash
-# Register the existing/default account and a separate account.
 csbridge profiles add work ~/.claude
 csbridge profiles add personal ~/.claude-personal
-
-# Claude Code, not this tool, handles sign-in for each profile.
 csbridge auth personal
 
-# Inspect sessions and confirm the correct project.
-csbridge sessions work
 cd /path/to/my-project
-
-# Close the original Claude session after its current turn finishes.
-# Then reopen its most recently modified conversation here, under personal.
+csbridge sessions work
+# Finish and close the source Claude session first.
 csbridge switch personal --from work
 ```
 
-The command creates a private snapshot of the source `.jsonl` transcript and launches:
+The CLI creates a private transcript backup, then delegates resumption to Claude Code using `--resume <absolute-transcript-path> --fork-session` with the destination account's `CLAUDE_CONFIG_DIR`. Unlike the VS Code UI workflow, **this runs Claude Code in a terminal**. You can also use `csbridge doctor`, `csbridge backup latest --from work`, and `csbridge resume <session-id> --from work --to personal`.
 
-```bash
-CLAUDE_CONFIG_DIR=/path/to/personal claude \
-  --resume /absolute/path/to/original-session.jsonl --fork-session
-```
+The root npm package remains **private** and versioned `0.1.0`; do not confuse that version with the `v0.3.0` VS Code extension.
 
-That uses Claude Code's official CLI flags. `--fork-session` leaves the original session available for future resumption instead of writing both accounts' turns to the same transcript.
+## Security and limitations
 
-### Common commands
+- All work happens locally. **Backups contain sensitive prompts, code, paths and tool outputs**: keep them private and protect your disk.
+- Claude Code's authentication, permissions, plan limits and sign-in are always managed by Claude Code.
+- No automatic live-process transfer, background account rotation, token exchange, session-format rewrite or quota bypass.
+- The VS Code extension cannot reliably determine the *active* Claude chat using a public extension API. Recent-session selection always needs confirmation.
+- Native restoration depends on Claude Code resolving the original session ID in the current workspace and configuration. Different config directories and remote environments are not guaranteed to work.
+- Worktree state, skills, MCP configuration, permissions and server-side memories do not automatically transfer just because a conversation reopens.
 
-| Command | Purpose |
-| --- | --- |
-| `csbridge profiles add work ~/.claude` | Register a profile and its config directory |
-| `csbridge profiles list` | Display registered profiles and the active bridge profile |
-| `csbridge profiles use work` | Set the bridge's default source profile |
-| `csbridge profiles remove work` | Unregister a profile **without deleting any files** |
-| `csbridge auth personal` | Run `claude auth login` under that profile |
-| `csbridge start personal` | Start a fresh Claude Code session under that profile |
-| `csbridge sessions work --cwd "$PWD"` | Discover source sessions for a project |
-| `csbridge switch personal --from work` | Fork the latest recorded session in the current project to personal |
-| `csbridge resume abcd1234 --from work --to personal` | Fork a specific existing conversation by unique ID prefix |
-| `csbridge resume latest --from work --to personal` | Fork the latest transcript **across all projects** |
-| `csbridge backup latest --from work` | Privately snapshot a transcript without starting Claude |
-| `csbridge doctor` | Check CLI availability, profile paths and inherited auth conflicts |
-
-If you've previously selected an active bridge profile with `profiles use`, `switch <target>` can infer `--from` when that active profile differs from the target. If no source is selected, it searches other registered profiles for a matching project. The target profile becomes the bridge's active profile after Claude exits successfully.
-
-For a project checkout that moved, pass `--cwd /new/path` to an **explicit** `resume <id>` or `switch --session <id>` command. Automatic `switch` requires a matching original project path to avoid opening an unrelated conversation.
-
-### How it works
-
-1. Register each account's `CLAUDE_CONFIG_DIR`. These directories are never combined, and a single directory cannot be assigned to multiple account names.
-2. Scan each profile's `projects/*/*.jsonl` session transcripts without modifying their contents. Read only a bounded prefix to find Claude Code's recorded working directory (when present).
-3. Choose a specific session by ID/prefix or select the newest session associated with the current project.
-4. Snapshot the source transcript into `~/.config/claude-session-bridge/backups/`. On Unix, the file is owner-readable only (`0600`).
-5. Start Claude Code under the destination configuration using `--resume <absolute path> --fork-session`.
-
-The CLI never opens or copies `.credentials.json`, OAuth secrets, API keys, or other Claude authentication data. If environment variables such as `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` are set, profile launches are blocked rather than risking ambiguous billing/authentication.
-
-## Security and privacy
-
-- **Local only:** no cloud account, logging service, analytics or credential exchange.
-- **Sensitive transcripts:** JSONL files and backups can contain private prompts, code, tool outputs, paths and secrets. Do not commit or sync these directories, and use disk encryption when possible.
-- **No source mutation:** each handoff takes a new backup and forks the destination; the original transcript is read-only.
-- **No live migration:** finish outstanding tool calls and exit the source session first. The bridge does not transfer running jobs, background processes, remote control, pending approvals or MCP tokens.
-- **Session continuity is not full workspace migration:** `CLAUDE.md`, auto memory, skills, permissions, plugins and rewind checkpoints may differ between profiles; project files stay wherever they were originally stored.
-- **No quota bypass:** usage is billed to whichever account Claude Code actually authenticates; this tool does not evade plan restrictions or automatically rotate accounts on rate limits.
-- **Defensive defaults:** symlinked transcript files are not indexed; backups use exclusive creation and are discarded if the source changes while it is being copied; no shell evaluates session IDs or filesystem paths.
-
-## Limitations
-
-- Claude Code transcripts are stored locally and their structure is not a stable public interchange format; this CLI reads only a small amount of transcript metadata and delegates conversation loading to Claude Code.
-- If Claude Code cannot load a session from another config directory, this version **fails without attempting a risky automatic file import**. See the official session and CLI documentation links below.
-- Active sessions should not be handed off; concurrent writes may invalidate backups.
-- This tool targets terminal Claude Code sessions, not Claude Desktop, the browser, hosted Claude Code sessions or the VS Code extension's session sidebar.
-- Sessions without a discoverable `cwd` can still be transferred using `resume <id>` or `switch --session <id>`; automatic project matching may not work.
-- Existing account profile directories must be authenticated separately (`csbridge auth <name>`). Logging into two accounts with the exact same configuration directory overwrites which identity Claude Code uses.
-
-## Development
+## Development and validation
 
 ```bash
 npm ci
 npm run check
-npm pack --dry-run
+npm --prefix vscode-extension run check
+npm --prefix vscode-extension run package:vsix
 ```
 
-Tests cover isolated profiles, session discovery, project matching, fork invocation, backups, permissions, missing paths, ambiguous prefixes, auth environment overrides, error propagation, and symlinked transcripts. They mock the Claude executable; CI runs Node 20/22/24 on Linux, macOS and Windows. Live multi-account integration tests remain a release blocker.
+CI tests Node **20/22/24** on **Linux/macOS/Windows** and packages a downloadable VSIX. Tests validate local session discovery, profile isolation, backups, handoff recovery, diagnostics and safe invocation. Automated mocks do **not** replace real two-account VS Code smoke testing.
 
-## Official references
+- [VS Code companion documentation](vscode-extension/README.md)
+- [Changelog](CHANGELOG.md)
+- [Claude Code VS Code documentation](https://code.claude.com/docs/en/vs-code)
+- [Claude Code sessions](https://code.claude.com/docs/en/sessions)
+- [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
 
-- [Claude Code: Sessions](https://code.claude.com/docs/en/sessions)
-- [Claude Code: CLI reference](https://code.claude.com/docs/en/cli-reference)
-- [Claude Code: Settings and `CLAUDE_CONFIG_DIR`](https://code.claude.com/docs/en/settings)
-
-MIT licensed. Not affiliated with or endorsed by Anthropic.
-
-## Use with the Claude Code VS Code extension (native chat panel)
-
-If you use **Claude Code's graphical VS Code extension** rather than its CLI, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It adds Command Palette actions to **Resume Local Session**, **Back Up Local Session**, and display a **Switch Account Guide**. The resume command uses Anthropic's official `vscode://anthropic.claude-code/open?session=...` link, so it targets the native conversation panel, not an integrated terminal.
-
-**Simplest account switch:** leave `~/.claude` as the same session storage location, close the active conversation, sign out and sign in through Claude Code (`/logout`, `/login`), then select your saved conversation in the panel's Session history. No transcript import or account-token copying is necessary. If you intentionally isolate accounts with different `CLAUDE_CONFIG_DIR` folders, note that the VS Code session picker can have compatibility problems with those folders; consult the [companion extension limitations](vscode-extension/README.md). The CLI's cross-profile `--fork-session` workflow is *not* an automatic VS Code chat-panel handoff.
-
-Official references: [Claude Code in VS Code](https://code.claude.com/docs/en/vs-code), especially **Resume past conversations**, **Launch a VS Code tab from other tools**, and **Extension settings**.
-
-
-## VS Code graphical extension (beta 0.3.0)
-
-If you use the **official Claude Code VS Code chat panel**, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It offers a searchable session picker, a confirmation-based most-recent-session shortcut, SHA-256-backed private backups, local recovery diagnostics and a resumable handoff before the user signs out and in through Claude's own interface.
-
-Download the installable VSIX artifact from the **VS Code VSIX** GitHub Actions workflow, or build with `cd vscode-extension && npm run package:vsix`. Account authentication remains manual; session restoration requires the source local transcript to be visible to Claude's active configuration. The bridge verifies neither a changed identity nor successful restoration automatically.
+MIT licensed.
