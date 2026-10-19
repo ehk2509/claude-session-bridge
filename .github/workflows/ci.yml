@@ -27,4 +27,5 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run check
+      - run: npm --prefix vscode-extension run check
       - run: npm pack --dry-run

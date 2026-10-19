@@ -120,3 +120,11 @@ Tests cover isolated profiles, session discovery, project matching, fork invocat
 - [Claude Code: Settings and `CLAUDE_CONFIG_DIR`](https://code.claude.com/docs/en/settings)
 
 MIT licensed. Not affiliated with or endorsed by Anthropic.
+
+## Use with the Claude Code VS Code extension (native chat panel)
+
+If you use **Claude Code's graphical VS Code extension** rather than its CLI, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It adds Command Palette actions to **Resume Local Session**, **Back Up Local Session**, and display a **Switch Account Guide**. The resume command uses Anthropic's official `vscode://anthropic.claude-code/open?session=...` link, so it targets the native conversation panel, not an integrated terminal.
+
+**Simplest account switch:** leave `~/.claude` as the same session storage location, close the active conversation, sign out and sign in through Claude Code (`/logout`, `/login`), then select your saved conversation in the panel's Session history. No transcript import or account-token copying is necessary. If you intentionally isolate accounts with different `CLAUDE_CONFIG_DIR` folders, note that the VS Code session picker can have compatibility problems with those folders; consult the [companion extension limitations](vscode-extension/README.md). The CLI's cross-profile `--fork-session` workflow is *not* an automatic VS Code chat-panel handoff.
+
+Official references: [Claude Code in VS Code](https://code.claude.com/docs/en/vs-code), especially **Resume past conversations**, **Launch a VS Code tab from other tools**, and **Extension settings**.
