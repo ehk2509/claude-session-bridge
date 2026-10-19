@@ -6,7 +6,7 @@ Companion extension for the official Anthropic Claude Code extension. Safely bac
 
 ## Install
 
-1. Download the `claude-session-bridge-vscode-0.3.0.vsix` artifact from the project's [GitHub Actions CI run](https://github.com/ehk2509/claude-session-bridge/actions).
+1. Download `claude-session-bridge-vscode-0.3.0.vsix` from the [v0.3.0 GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0), or from a successful [CI artifact](https://github.com/ehk2509/claude-session-bridge/actions) before the release is available.
 2. In VS Code choose Extensions → `...` → **Install from VSIX...**.
 3. Open the **exact project root** used by the previous Claude Code conversation.
 
@@ -65,3 +65,5 @@ npm --prefix vscode-extension run package:vsix
 ```
 
 `@vscode/vsce` builds the VSIX with a version-independent filename. The GitHub Actions artifact contains the installable extension, which is not automatically Marketplace-published.
+
+Marketplace publication is prepared but not automatic. See the [manual publishing checklist](../docs/marketplace.md).
