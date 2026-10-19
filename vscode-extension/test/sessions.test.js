@@ -8,9 +8,11 @@ import { claudeConfigPath, isInWorkspace, sessionLink, listLocalSessions, backup
 const makeTemp = () => fs.mkdtemp(path.join(os.tmpdir(), 'csbridge-vscode-'));
 
 test('config path uses absolute VS Code config override only', () => {
-  assert.equal(claudeConfigPath([], '/tmp/home'), '/tmp/home/.claude');
-  assert.equal(claudeConfigPath([{ name: 'CLAUDE_CONFIG_DIR', value: '/tmp/alt' }]), path.normalize('/tmp/alt'));
-  assert.equal(claudeConfigPath([{ name: 'CLAUDE_CONFIG_DIR', value: '~/.claude-alt' }], '/tmp/home'), '/tmp/home/.claude');
+  const home = path.resolve('test-home');
+  const alt = path.resolve('test-alt');
+  assert.equal(claudeConfigPath([], home), path.join(home, '.claude'));
+  assert.equal(claudeConfigPath([{ name: 'CLAUDE_CONFIG_DIR', value: alt }]), alt);
+  assert.equal(claudeConfigPath([{ name: 'CLAUDE_CONFIG_DIR', value: '~/.claude-alt' }], home), path.join(home, '.claude'));
 });
 
 test('URL opens native Claude Code session without injecting prompt', () => {
