@@ -1,0 +1,15 @@
+# Changelog
+
+## VS Code extension 0.3.0 — 2026-10-19
+
+- **Quick Account Handoff** command and always-available status bar shortcut. Suggestions are based on recent transcript writes and require user confirmation; active chat IDs are not exposed by the official API.
+- Private transcript backup with a recorded SHA-256 digest. Pending handoffs persist across reloads and are never marked successful without explicit confirmation.
+- **Diagnose Session Recovery** command checks original workspace, Claude Code installation, config directory, backup integrity and transcript availability without logging conversation text or credentials.
+- Detection of inherited `CLAUDE_CONFIG_DIR`; hardened handling of damaged handoff metadata and missing backups.
+- Version-independent VSIX packaging and CI artifact path; compatibility tests for regressions and recovery.
+
+The CLI remains at 0.1.0. Real-world session continuity has been confirmed by one user with two Claude accounts on Linux in VS Code; broader version, OS and configuration coverage remains to be tested.
+
+## VS Code extension 0.2.0
+
+- Searchable local session picker, verified workspace matching, private backups, handoff wizard, pending record recovery, and native VS Code Claude Code URI resume.

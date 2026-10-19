@@ -1,5 +1,8 @@
 # Claude Session Bridge
 
+> **VS Code companion v0.3.0:** Click the *Claude handoff* status-bar item or run `Claude Session Bridge: Quick Account Handoff` to suggest the latest saved conversation, back it up, sign in manually with the other account, and resume. Use `Claude Session Bridge: Diagnose Session Recovery` if resumption fails. See [VS Code extension documentation](vscode-extension/README.md) and [changelog](CHANGELOG.md).
+
+
 **Keep your Claude Code conversation when you change accounts.** `csbridge` is a local-first, dependency-free Node.js CLI that discovers Claude Code transcripts, creates private backups, and opens a **fork of an existing session** with a different, independently authenticated Claude Code configuration directory.
 
 > **v0.1.0 — beta / proof-of-concept.** CLI behavior is covered by automated tests using a mocked Claude executable. Cross-account resumption has **not yet been validated against two real Claude accounts**. Claude Code may change how it reads external session paths. Do not depend on this for mission-critical conversation state without testing it on your installation.
@@ -130,8 +133,8 @@ If you use **Claude Code's graphical VS Code extension** rather than its CLI, us
 Official references: [Claude Code in VS Code](https://code.claude.com/docs/en/vs-code), especially **Resume past conversations**, **Launch a VS Code tab from other tools**, and **Extension settings**.
 
 
-## VS Code graphical extension (beta 0.2.0)
+## VS Code graphical extension (beta 0.3.0)
 
-If you use the **official Claude Code VS Code chat panel**, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It offers a searchable session picker and a guided, resumable handoff that makes a private transcript backup before the user signs out and in through Claude's own interface.
+If you use the **official Claude Code VS Code chat panel**, use the companion extension in [`vscode-extension/`](vscode-extension/README.md). It offers a searchable session picker, a confirmation-based most-recent-session shortcut, SHA-256-backed private backups, local recovery diagnostics and a resumable handoff before the user signs out and in through Claude's own interface.
 
 Download the installable VSIX artifact from the **VS Code VSIX** GitHub Actions workflow, or build with `cd vscode-extension && npm run package:vsix`. Account authentication remains manual; session restoration requires the source local transcript to be visible to Claude's active configuration. The bridge verifies neither a changed identity nor successful restoration automatically.

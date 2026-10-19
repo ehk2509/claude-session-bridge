@@ -1,52 +1,61 @@
 # Claude Session Bridge for VS Code
 
-A companion to **Anthropic's official Claude Code extension**. Find and safely back up local conversations, then resume one after signing in to a different Claude account — without copying credentials or modifying Claude's transcripts.
+Companion extension for the official Anthropic Claude Code extension. Safely back up local sessions and reopen them after signing into another Claude account. **Your transcript files and credentials are never copied to an external service.**
 
-> Beta 0.2.0. Requires VS Code 1.94+, Node-powered local or remote extension host, and the official Anthropic Claude Code extension. The cross-account workflow **must be tested with the accounts you use**. If Claude cannot resolve a session ID, its URI handler may open a fresh conversation; the backup is retained for recovery.
+**v0.3.0** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. No Marketplace publication yet.
 
-## Install from a VSIX
+## Install
 
-Download the VSIX from the GitHub Actions *VS Code VSIX* artifact, then VS Code → Extensions → `...` → **Install from VSIX...**, or:
+1. Download the `claude-session-bridge-vscode-0.3.0.vsix` artifact from the project's [GitHub Actions CI run](https://github.com/ehk2509/claude-session-bridge/actions).
+2. In VS Code choose Extensions → `...` → **Install from VSIX...**.
+3. Open the **exact project root** used by the previous Claude Code conversation.
 
-```bash
-code --install-extension claude-session-bridge-vscode-0.2.0.vsix
-```
+Or install locally with `code --install-extension claude-session-bridge-vscode-0.3.0.vsix`.
 
-## Commands (Ctrl+Shift+P / Cmd+Shift+P)
+## Fast handoff
 
-| Command | Behavior |
+1. Finish the current Claude Code turn and **close that chat**. Open `Ctrl+Shift+P` / `Cmd+Shift+P` → **Claude Session Bridge: Quick Account Handoff**, or click the **Claude handoff** status-bar item.
+2. Bridge proposes the *most recently saved* conversation in the current project. **Confirm it is the correct conversation**, or choose **Choose Session** to browse the searchable local history. The timestamp is a heuristic; Bridge cannot see Claude's active chat ID through the public VS Code API.
+3. Confirm that the original chat is closed. Bridge makes a private, byte-for-byte backup and records its SHA-256 digest locally.
+4. In the official Claude Code panel use **Settings → Sign out** (or `/logout` if available) and sign into your second account. **Do not delete `~/.claude`.**
+5. Use **Finish Pending Handoff** (or the status-bar item), confirm you signed in, and let Bridge request that Claude Code reopen the saved session by ID.
+6. Check that earlier messages appear **and** Claude can continue the previous task. Click **History Restored** only if confirmed. Otherwise choose **Keep Pending** and use **Diagnose Session Recovery**.
+
+The saved handoff survives a VS Code reload. The private backup is retained even after successful confirmation.
+
+## Commands
+
+| Command (all prefixed `Claude Session Bridge:`) | Purpose |
 | --- | --- |
-| `Claude Session Bridge: Hand Off Session to Another Account` | Select a local session, make a private backup, guide sign-out/sign-in, then offer to resume |
-| `Claude Session Bridge: Finish Pending Handoff` | Resume after authentication, including after a VS Code reload |
-| `Claude Session Bridge: Resume Local Session` | Reopen a selected session with Claude's official VS Code URI handler |
-| `Claude Session Bridge: Back Up Local Session` | Create a private, byte-for-byte JSONL backup |
-| `Claude Session Bridge: Switch Account Guide` | Show official authentication instructions |
+| **Quick Account Handoff** | Suggest the latest local conversation, confirm, back up, guide sign-in and reopen |
+| **Hand Off Session to Another Account** | Start from an explicit searchable session picker |
+| **Finish Pending Handoff** | Continue after sign-in or a VS Code reload |
+| **Diagnose Session Recovery** | Check project, config, Claude Code installation, transcript/backup existence, and backup SHA-256 |
+| **Resume Local Session** | Ask Claude Code to reopen a selected session under the currently authenticated account |
+| **Back Up Local Session** | Save a private transcript backup without switching accounts |
+| **Switch Account Guide** | Show manual official Claude Code account-switching instructions |
 
-### Handoff walk-through
+## Diagnostics and troubleshooting
 
-1. Open the **same project root** and finish the currently active Claude conversation. Close the original tab/process.
-2. Run **Hand Off Session to Another Account**. Choose the saved conversation from the searchable session picker.
-3. The extension snapshots the transcript in your home directory and keeps an optional pending record in VS Code's local extension state.
-4. In the **official Claude Code panel**, choose **Settings → Sign out** (or `/logout`), then sign in with the other account.
-5. Choose **Resume With New Account** in the bridge dialog, or later run **Finish Pending Handoff** (also available as a status-bar button).
-6. Verify previous messages actually appear. Confirm **History Restored** only then; if the panel is blank, select **Keep Pending** and keep the backup.
+Run `Claude Session Bridge: Diagnose Session Recovery` and inspect the **Claude Session Bridge** output channel. It shows safe operational statuses without prompt text, transcript contents, full local paths, tokens, or raw SHA-256 values. Checks include missing Claude Code extension, nonmatching project, changed configuration directory, missing source transcript, missing private backup, and failed backup-integrity verification.
 
-## Limitations
+If Claude Code itself exits with code 1 and says you must accept updated terms, launch its official CLI, review and accept the terms, then reload VS Code. The bridge doesn't automate acceptance or bypass sign-in. If Claude cannot reopen the original conversation, keep the pending record and backup instead of claiming success.
 
-- The extension **does not automate login, obtain/rotate tokens, transfer usage allowances, or bypass account policies**.
-- It **does not copy or rewrite Anthropic's internal session history**. It asks Claude to open the original local session by ID. This works only if Claude can find the session in the current workspace/configuration.
-- Different `CLAUDE_CONFIG_DIR` directories, VS Code Remote/WSL/dev containers, or changes in Claude's local transcript format may prevent restoration. A warning appears if the active config directory differs.
-- Transcript backups contain potentially sensitive code, prompts, and tool outputs. They are local and never uploaded by this extension; take appropriate precautions with device access and encryption.
-- No account identity proof is available through the public VS Code extension API. The user confirms that authentication changed and that the conversation was restored.
+## Limits and security
 
-This project is not affiliated with Anthropic.
+- **No automatic sign-in or account change.** Authentication belongs to Claude Code; the user signs out/in manually.
+- **No guaranteed active-chat detection.** Latest saved transcript is a *suggestion* only, not the live tab's verified session ID.
+- **No automatic login-event listener or passive backup of all conversations.** A backup runs only when the user initiates a handoff or chooses Back Up.
+- **No transcript rewrite or automatic restore into Claude's private storage.** Claude Code must still resolve the local session in the selected workspace/configuration. Its native URI handler can open a blank chat if it cannot.
+- A different `CLAUDE_CONFIG_DIR`, remote/WSL/container environment, project path, or Claude Code update may prevent a resume. Diagnostics reports these risks.
+- Backup transcripts are **sensitive local files** (code, tool outputs, prompts). Store them on an encrypted device and never attach them to public issues.
+- The tool does not transfer account entitlements, quotas, tokens, MCP credentials, or private server-side context. Previously compacted context remains summarized, not magically expanded.
 
-## Developer commands
+## Development
 
 ```bash
-cd vscode-extension
-npm run check
-npm run package:vsix
+npm --prefix vscode-extension run check
+npm --prefix vscode-extension run package:vsix
 ```
 
-GitHub Actions builds a canonical VSIX with Microsoft's official `@vscode/vsce` packager. Publishing to the Marketplace is a separate step and is **not** automated.
+`@vscode/vsce` builds the VSIX with a version-independent filename. The GitHub Actions artifact contains the installable extension, which is not automatically Marketplace-published.
