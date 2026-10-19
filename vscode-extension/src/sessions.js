@@ -24,8 +24,9 @@ export function isInWorkspace(cwd, workspaceFolders) {
   const comparison = process.platform === 'win32' ? value => value.toLowerCase() : value => value;
   return (workspaceFolders || []).some(folder => {
     if (!folder || !path.isAbsolute(folder)) return false;
-    const rel = path.relative(comparison(folder), comparison(cwd));
-    return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+    // Anthropic's URL handler requires this exact workspace; a parent folder
+    // is insufficient and could otherwise silently open a new chat.
+    return path.resolve(comparison(folder)) === path.resolve(comparison(cwd));
   });
 }
 

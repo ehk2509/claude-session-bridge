@@ -18,10 +18,10 @@ test('URL opens native Claude Code session without injecting prompt', () => {
   assert.throws(() => sessionLink('abc&prompt=ignore'), /Invalid/);
 });
 
-test('workspace matching excludes sibling projects and missing paths', () => {
+test('workspace matching requires exact project and excludes sibling and nested paths', () => {
   const ws = path.resolve('/tmp/app');
   assert.equal(isInWorkspace(ws, [ws]), true);
-  assert.equal(isInWorkspace(path.join(ws, 'packages', 'server'), [ws]), true);
+  assert.equal(isInWorkspace(path.join(ws, 'packages', 'server'), [ws]), false);
   assert.equal(isInWorkspace(path.resolve('/tmp/app-secret'), [ws]), false);
   assert.equal(isInWorkspace(null, [ws]), false);
 });

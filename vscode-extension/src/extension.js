@@ -4,7 +4,8 @@ import { claudeConfigPath, listLocalSessions, backupLocalSession, sessionLink } 
 
 // VS Code is loaded dynamically so the data handling can be tested without the IDE.
 export async function activate(context) {
-  const vscode = await import('vscode');
+  const imported = await import('vscode');
+  const vscode = imported.default || imported;
   const workspaceDirs = () => (vscode.workspace.workspaceFolders || [])
     .filter(folder => folder.uri.scheme === 'file')
     .map(folder => folder.uri.fsPath);
@@ -35,6 +36,15 @@ export async function activate(context) {
       const selected = await chooseSession();
       if (!selected) return;
       // Claude only supports the current workspace via this URL scheme; never pass file:// transcripts or credentials.
+      const actualDir = configDir();
+      const defaultDir = path.join(os.homedir(), '.claude');
+      if (path.normalize(actualDir) !== path.normalize(defaultDir)) {
+        const proceed = await vscode.window.showWarningMessage(
+          'This session uses a custom CLAUDE_CONFIG_DIR. Some Claude Code VS Code versions fail to find those sessions in the native panel. Opening may start a new conversation. Continue?',
+          'Open Anyway', 'Cancel'
+        );
+        if (proceed !== 'Open Anyway') return;
+      }
       const url = sessionLink(selected.id);
       await vscode.env.openExternal(vscode.Uri.parse(url));
       // The Claude URI handler may start a *new* conversation if its session lookup fails.
