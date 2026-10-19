@@ -1,0 +1,57 @@
+name: Publish VS Code extension to Marketplace (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Approved GitHub release tag (currently v0.3.0)'
+        required: true
+        type: string
+        default: 'v0.3.0'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish reviewed VSIX with GitHub OIDC
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: vscode-marketplace
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate approved version
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "$REQUESTED_TAG" = "v0.3.0" || {
+            echo "::error::Only the approved v0.3.0 release can be published by this workflow."
+            exit 1
+          }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download exactly the reviewed GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download v0.3.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'claude-session-bridge-vscode-0.3.0.vsix' \
+            --pattern 'SHA256SUMS' \
+            --dir dist
+      - name: Validate artifact hash and extension manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum --check SHA256SUMS)
+          unzip -p dist/claude-session-bridge-vscode-0.3.0.vsix extension/package.json |
+            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.0"||p.publisher!=="ehk2509")process.exit(1)})'
+      - name: Publish with short-lived Marketplace credential (no PAT)
+        # Requires Marketplace trusted-publisher policy for this workflow,
+        # and an appropriately protected vscode-marketplace GitHub environment.
+        run: npx --yes @vscode/vsce@4.0.0 publish --packagePath dist/claude-session-bridge-vscode-0.3.0.vsix --oidc

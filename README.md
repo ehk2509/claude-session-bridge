@@ -17,7 +17,7 @@ You need:
 - VS Code **1.94+** with a Node-capable extension host.
 - Anthropic's **official Claude Code** extension (`anthropic.claude-code`), installed and signed in.
 - The same local project folder that was used for the original conversation.
-- The `claude-session-bridge-vscode-0.3.0.vsix` build from the [GitHub Actions runs](https://github.com/ehk2509/claude-session-bridge/actions). Open a successful **CI** run, scroll to **Artifacts**, download `claude-session-bridge-vscode-vsix`, and extract the VSIX file. This is a build artifact, **not** a Marketplace listing.
+- The installable `claude-session-bridge-vscode-0.3.0.vsix` from the [v0.3.0 GitHub Release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0). A CI artifact is also available before the release is published. This is **not yet a Marketplace listing**.
 
 Install through **Extensions** (`Ctrl+Shift+X`) → `...` → **Install from VSIX...**, or:
 
@@ -126,6 +126,8 @@ CI tests Node **20/22/24** on **Linux/macOS/Windows** and packages a downloadabl
 
 - [VS Code companion documentation](vscode-extension/README.md)
 - [Changelog](CHANGELOG.md)
+- [GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0)
+- [Marketplace publication checklist](docs/marketplace.md)
 - [Claude Code VS Code documentation](https://code.claude.com/docs/en/vs-code)
 - [Claude Code sessions](https://code.claude.com/docs/en/sessions)
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
