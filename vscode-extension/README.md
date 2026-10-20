@@ -4,11 +4,11 @@
 
 Companion extension for the official Anthropic Claude Code extension. Safely back up local sessions and reopen them after signing into another Claude account. **Your transcript files and credentials are never copied to an external service.**
 
-**v0.3.2** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. Marketplace publisher: `ElyesHkiri`; Marketplace publishing requires an authorized PAT and a successful manual workflow.
+**v0.3.2** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. Published on the [Visual Studio Marketplace under `ElyesHkiri`](https://marketplace.visualstudio.com/items?itemName=ElyesHkiri.claude-session-bridge-vscode).
 
 ## Install
 
-1. Download `claude-session-bridge-vscode-0.3.2.vsix` from the [v0.3.2 GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.2), or from a successful [CI artifact](https://github.com/ehk2509/claude-session-bridge/actions) before the release is available.
+1. Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ElyesHkiri.claude-session-bridge-vscode), or download the `claude-session-bridge-vscode-0.3.2.vsix` from the [GitHub Release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.2).
 2. In VS Code choose Extensions → `...` → **Install from VSIX...**.
 3. Open the **exact project root** used by the previous Claude Code conversation.
 
