@@ -1,5 +1,12 @@
 # Changelog
 
+## VS Code extension 0.3.1 — 2026-10-20
+
+- Register the new neon session-bridge PNG logo at `vscode-extension/media/icon.png` for VS Code / Marketplace.
+- Set Marketplace publisher to `ElyesHkiri` (GitHub repository owner remains `ehk2509`).
+- Update version, release pipeline, downloadable VSIX references, and Marketplace publisher validation.
+- No session-handling behavior changes. Existing `v0.3.0` artifacts are left unchanged.
+
 ## VS Code extension 0.3.0 — 2026-10-19
 
 - **Quick Account Handoff** command and always-available status bar shortcut. Suggestions are based on recent transcript writes and require user confirmation; active chat IDs are not exposed by the official API.

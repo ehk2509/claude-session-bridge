@@ -1,28 +1,32 @@
 # Claude Session Bridge
 
+<img src="vscode-extension/media/icon.png" alt="Claude Session Bridge logo" width="160" />
+
 **Continue a Claude Code conversation after switching Claude accounts — directly inside VS Code.**
+
+Marketplace publisher: **`ElyesHkiri`** · Extension ID: `ElyesHkiri.claude-session-bridge-vscode`.
 
 Claude Session Bridge is an open-source, local-first companion for the official **Anthropic Claude Code** extension. It discovers saved conversations for the current workspace, makes a private backup, guides you through signing in to your other account, and asks Claude Code to reopen the same session.
 
-> **VS Code extension: v0.3.0 (beta)** · **CLI: v0.1.0 (beta)**
+> **VS Code extension: v0.3.1 (beta)** · **CLI: v0.1.0 (beta)**
 >
 > Tested successfully by one user on Linux with two Claude accounts: the previous conversation appeared and Claude continued its earlier task. This does **not** guarantee every account, platform, remote environment, or Claude Code version will support the same handoff.
 
 No credential copying, token rotation, telemetry, cloud synchronization, or automatic account switching. This project is **not affiliated with or endorsed by Anthropic**.
 
-## VS Code: install v0.3.0
+## VS Code: install v0.3.1
 
 You need:
 
 - VS Code **1.94+** with a Node-capable extension host.
 - Anthropic's **official Claude Code** extension (`anthropic.claude-code`), installed and signed in.
 - The same local project folder that was used for the original conversation.
-- The installable `claude-session-bridge-vscode-0.3.0.vsix` from the [v0.3.0 GitHub Release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0). A CI artifact is also available before the release is published. This is **not yet a Marketplace listing**.
+- The installable `claude-session-bridge-vscode-0.3.1.vsix` from the [v0.3.1 GitHub Release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.1). A CI artifact is also available before the release is published. This is **not yet a Marketplace listing**.
 
 Install through **Extensions** (`Ctrl+Shift+X`) → `...` → **Install from VSIX...**, or:
 
 ```bash
-code --install-extension claude-session-bridge-vscode-0.3.0.vsix
+code --install-extension claude-session-bridge-vscode-0.3.1.vsix
 ```
 
 Reload VS Code after upgrading. Open the exact project root in which your previous Claude Code session ran.
@@ -46,7 +50,7 @@ The status bar is the **thin strip along the very bottom of the VS Code window**
 If it is missing:
 
 1. Enable **View → Appearance → Status Bar**.
-2. Make sure **Claude Session Bridge v0.3.0** is installed and enabled in Extensions.
+2. Make sure **Claude Session Bridge v0.3.1** is installed and enabled in Extensions.
 3. Run **Developer: Reload Window** from the Command Palette.
 4. Use `Ctrl+Shift+P` → `Claude Session Bridge: Quick Account Handoff` even if the status-bar item is hidden.
 
@@ -102,7 +106,7 @@ csbridge switch personal --from work
 
 The CLI creates a private transcript backup, then delegates resumption to Claude Code using `--resume <absolute-transcript-path> --fork-session` with the destination account's `CLAUDE_CONFIG_DIR`. Unlike the VS Code UI workflow, **this runs Claude Code in a terminal**. You can also use `csbridge doctor`, `csbridge backup latest --from work`, and `csbridge resume <session-id> --from work --to personal`.
 
-The root npm package remains **private** and versioned `0.1.0`; do not confuse that version with the `v0.3.0` VS Code extension.
+The root npm package remains **private** and versioned `0.1.0`; do not confuse that version with the `v0.3.1` VS Code extension.
 
 ## Security and limitations
 
@@ -126,7 +130,7 @@ CI tests Node **20/22/24** on **Linux/macOS/Windows** and packages a downloadabl
 
 - [VS Code companion documentation](vscode-extension/README.md)
 - [Changelog](CHANGELOG.md)
-- [GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0)
+- [GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.1)
 - [Marketplace publication checklist](docs/marketplace.md)
 - [Claude Code VS Code documentation](https://code.claude.com/docs/en/vs-code)
 - [Claude Code sessions](https://code.claude.com/docs/en/sessions)

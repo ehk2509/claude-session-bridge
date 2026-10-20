@@ -1,22 +1,24 @@
 # Claude Session Bridge for VS Code
 
+<img src="media/icon.png" alt="Claude Session Bridge logo" width="144" />
+
 Companion extension for the official Anthropic Claude Code extension. Safely back up local sessions and reopen them after signing into another Claude account. **Your transcript files and credentials are never copied to an external service.**
 
-**v0.3.0** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. No Marketplace publication yet.
+**v0.3.1** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. Marketplace publisher: `ElyesHkiri`; Marketplace publishing requires an authorized PAT and a successful manual workflow.
 
 ## Install
 
-1. Download `claude-session-bridge-vscode-0.3.0.vsix` from the [v0.3.0 GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0), or from a successful [CI artifact](https://github.com/ehk2509/claude-session-bridge/actions) before the release is available.
+1. Download `claude-session-bridge-vscode-0.3.1.vsix` from the [v0.3.1 GitHub beta release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.1), or from a successful [CI artifact](https://github.com/ehk2509/claude-session-bridge/actions) before the release is available.
 2. In VS Code choose Extensions → `...` → **Install from VSIX...**.
 3. Open the **exact project root** used by the previous Claude Code conversation.
 
-Or install locally with `code --install-extension claude-session-bridge-vscode-0.3.0.vsix`.
+Or install locally with `code --install-extension claude-session-bridge-vscode-0.3.1.vsix`.
 
 ## Find the status-bar shortcut
 
 The **VS Code status bar** is the thin strip at the bottom of the editor window, usually with **Claude handoff** on the right. Click it to start the suggested-session workflow. During an unfinished handoff, it changes to **Finish Claude handoff**.
 
-If the bar is hidden, use **View → Appearance → Status Bar**. If the shortcut still is not visible, check that v0.3.0 is installed and enabled, run **Developer: Reload Window**, or use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) to start **Claude Session Bridge: Quick Account Handoff** instead. The status-bar shortcut is optional; the command is equivalent.
+If the bar is hidden, use **View → Appearance → Status Bar**. If the shortcut still is not visible, check that v0.3.1 is installed and enabled, run **Developer: Reload Window**, or use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) to start **Claude Session Bridge: Quick Account Handoff** instead. The status-bar shortcut is optional; the command is equivalent.
 
 ## Fast handoff
 
