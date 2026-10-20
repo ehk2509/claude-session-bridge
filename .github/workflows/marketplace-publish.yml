@@ -20,12 +20,16 @@ permissions:
 jobs:
   publish:
     name: Publish verified VSIX to Marketplace (VSCE_PAT)
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: publish VSIX v0.3.1 [marketplace-once]')))
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        startsWith(github.event.head_commit.message, 'release: publish VSIX v0.3.1 [marketplace-once]')))
     runs-on: ubuntu-latest
     steps:
       - name: Validate approved release
         env:
-          REQUESTED_TAG: ${{ inputs.release_tag }}
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'v0.3.1' }}
         run: |
           test "$REQUESTED_TAG" = "v0.3.1" || {
             echo "::error::Only v0.3.1 can be published by this workflow. Update the reviewed workflow for future releases."
