@@ -49,7 +49,7 @@ jobs:
           import fs from 'node:fs';
           const files = JSON.parse(fs.readFileSync('/tmp/csbridge-pack.json','utf8'))[0].files.map(x => x.path);
           const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          if (p.name !== 'claude-session-bridge-cli' || p.version !== '0.2.0' || p.private ||
+          if (p.name !== 'claude-session-bridge-cli' || p.version !== '0.2.1' || p.private ||
               p.bin?.csbridge !== 'src/cli.js') throw new Error('Unexpected npm package metadata');
           for (const required of ['package.json', 'src/cli.js', 'src/core.js', 'src/recovery.js', 'README.md', 'LICENSE']) {
             if (!files.includes(required)) throw new Error('Required npm file missing: ' + required);
@@ -60,23 +60,18 @@ jobs:
           if (forbidden.length) throw new Error('Unexpected npm files: ' + forbidden.join(', '));
           console.log('Validated', files.length, 'npm package files');
           NODE
-      - name: Smoke-test published npm CLI (only if v0.2.0 is available)
+      - name: Smoke-test local npm tarball installed via global executable
         shell: bash
         run: |
           set -euo pipefail
-          if npm view claude-session-bridge-cli@0.2.0 version --json >/tmp/npm-version.json 2>/dev/null; then
-            node -e 'const fs=require("fs");const v=JSON.parse(fs.readFileSync("/tmp/npm-version.json"));if(v!=="0.2.0")process.exit(1)'
-            npm view claude-session-bridge-cli@0.2.0 bin --json >/tmp/npm-bin.json
-            node -e 'const fs=require("fs");const b=JSON.parse(fs.readFileSync("/tmp/npm-bin.json"));if(b?.csbridge!=="src/cli.js")throw Error("Published npm CLI binary mapping is absent or unexpected");'
-            dest="$(mktemp -d)"
-            npm install --global --prefix "$dest" claude-session-bridge-cli@0.2.0
-            ls -la "$dest/bin"
-            "$dest/bin/csbridge" help | tee /tmp/csbridge-help.txt
-            grep -q "Claude Session Bridge CLI v0.2.0" /tmp/csbridge-help.txt
-            echo "Published npm package installs a working csbridge executable."
-          else
-            echo "Version 0.2.0 is not yet visible; first-publish registry availability check will decide."
-          fi
+          npm pack --json >/tmp/csbridge-tarball.json
+          tgz=$(node -e 'const p=require("/tmp/csbridge-tarball.json");process.stdout.write(p[0].filename)')
+          dest="$(mktemp -d)"
+          npm install --global --prefix "$dest" "./$tgz"
+          test -x "$dest/bin/csbridge"
+          "$dest/bin/csbridge" help | tee /tmp/csbridge-help.txt
+          grep -q "Claude Session Bridge CLI v0.2.1" /tmp/csbridge-help.txt
+          echo "Validated actual npm-installed CLI binary."
       - name: Check npm registry name ownership or availability
         shell: bash
         run: |
@@ -183,19 +178,19 @@ jobs:
             --notes-file docs/releases/v0.3.2.md \
             --prerelease --latest=false
 
-  publish-npm-first:
-    name: Publish CLI 0.2.0 to npm (first release)
+  publish-npm-patch:
+    name: Publish CLI 0.2.1 to npm (CLI symlink patch)
     needs: [test, npm-cli-package]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      startsWith(github.event.head_commit.message, 'release: npm publish claude-session-bridge-cli@0.2.0 [once]')
+      startsWith(github.event.head_commit.message, 'release: npm publish claude-session-bridge-cli@0.2.1 [once]')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     concurrency:
-      group: npm-claude-session-bridge-cli-0.2.0
+      group: npm-claude-session-bridge-cli-0.2.1
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -210,10 +205,29 @@ jobs:
         shell: bash
         run: |
           if [[ -z "$NODE_AUTH_TOKEN" ]]; then
-            echo "::error::NPM_TOKEN secret is required for the first npm publication. Create a granular npm publish token, then add it under this repo's GitHub Actions secrets."
+            echo "::error::NPM_TOKEN is required in this repository's GitHub Actions secrets."
             exit 1
           fi
       - name: Publish reviewed CLI package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
+      - name: Verify live npm install and executable after publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 18); do
+            echo "Checking npm registry propagation: attempt $attempt/18"
+            if npm view claude-session-bridge-cli@0.2.1 version --json --prefer-online 2>/dev/null | grep -q '"0.2.1"'; then
+              dest="$(mktemp -d)"
+              if npm install --global --prefix "$dest" claude-session-bridge-cli@0.2.1 --prefer-online >/dev/null 2>&1 && \
+                 "$dest/bin/csbridge" help | grep -q "Claude Session Bridge CLI v0.2.1"; then
+                echo "Registry package 0.2.1 and installed csbridge command verified."
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Registry publication did not pass executable smoke test in time."
+          exit 1
+
