@@ -248,7 +248,7 @@ test('missing source warns without showing transcript contents; retry requires o
   const report = f.run('pending');
   assert.equal(report.status, 0);
   assert.match(report.stdout, /source-session/);
-  assert.match(report.stdout, /WARNING/);
+  assert.match(report.stdout, /\[WARN\]/);
   assert.equal(report.stdout.includes('test prompt'), false);
   assert.equal(f.run('retry').status, 1);
   assert.match(f.run('retry').stderr, /not safe to retry/);
