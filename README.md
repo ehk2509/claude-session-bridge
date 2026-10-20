@@ -84,7 +84,17 @@ Handoffs survive a VS Code window reload. A successful handoff **keeps its priva
 
 ## Terminal CLI — v0.2.0 beta
 
-Use the **separate Node.js CLI** for profile-aware terminal Claude Code sessions across independently signed-in accounts. The Marketplace VS Code extension does **not** install the `csbridge` command, and the CLI remains a **private npm package** available from the GitHub repository.
+**npm package:** [`claude-session-bridge-cli`](https://www.npmjs.com/package/claude-session-bridge-cli) (separate from the VS Code Marketplace extension).
+
+After the first verified npm publication, install globally with:
+
+```bash
+npm install --global claude-session-bridge-cli
+csbridge doctor
+```
+
+
+Use the **separate Node.js CLI** for profile-aware terminal Claude Code sessions across independently signed-in accounts. The Marketplace VS Code extension does **not** install the `csbridge` command. The terminal CLI can be installed separately from npm or directly from the GitHub repository.
 
 Requirements: Node.js 20+, official `claude` CLI on your PATH, and accounts authenticated in separate configuration directories.
 

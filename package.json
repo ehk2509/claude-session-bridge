@@ -1,7 +1,7 @@
 {
-  "name": "claude-session-bridge",
+  "name": "claude-session-bridge-cli",
   "version": "0.2.0",
-  "description": "Safely resume local Claude Code conversations across independently authenticated account profiles",
+  "description": "Safely back up and resume Claude Code CLI conversations across separately authenticated accounts",
   "type": "module",
   "bin": {
     "csbridge": "./src/cli.js"
@@ -18,8 +18,28 @@
     "session",
     "resume",
     "account-switching",
-    "developer-tools"
+    "developer-tools",
+    "cli",
+    "cross-account",
+    "session-handoff",
+    "claude-code-cli"
   ],
   "license": "MIT",
-  "private": true
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ehk2509/claude-session-bridge.git"
+  },
+  "homepage": "https://github.com/ehk2509/claude-session-bridge#terminal-cli--v020-beta",
+  "bugs": {
+    "url": "https://github.com/ehk2509/claude-session-bridge/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "src/cli.js",
+    "src/core.js",
+    "src/recovery.js"
+  ]
 }
