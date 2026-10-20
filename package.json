@@ -4,7 +4,7 @@
   "description": "Safely back up and resume Claude Code CLI conversations across separately authenticated accounts",
   "type": "module",
   "bin": {
-    "csbridge": "./src/cli.js"
+    "csbridge": "src/cli.js"
   },
   "engines": {
     "node": ">=20"
