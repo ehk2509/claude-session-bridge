@@ -40,7 +40,6 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false
       - run: npm ci
       - name: Validate exact public package contents
         shell: bash
@@ -187,7 +186,6 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false
       - run: npm ci
       - name: Verify npm bootstrap token
         env:
