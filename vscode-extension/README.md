@@ -66,4 +66,4 @@ npm --prefix vscode-extension run package:vsix
 
 `@vscode/vsce` builds the VSIX with a version-independent filename. The GitHub Actions artifact contains the installable extension, which is not automatically Marketplace-published.
 
-Marketplace publication is prepared but not automatic. See the [manual publishing checklist](../docs/marketplace.md).
+Marketplace publication follows the Codico-style GitHub Actions `VSCE_PAT` secret workflow, and is **manual, not automatic**. See the [publisher and Actions-secret setup guide](../docs/marketplace.md).
