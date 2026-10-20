@@ -39,6 +39,19 @@ jobs:
         with:
           node-version: '22'
       - run: npm --prefix vscode-extension run check
+      - name: Verify VS Code Marketplace icon dimensions
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const png = fs.readFileSync('vscode-extension/media/icon.png');
+          const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+          if (!png.subarray(0, 8).equals(sig)) throw new Error('Extension icon is not PNG');
+          const w = png.readUInt32BE(16);
+          const h = png.readUInt32BE(20);
+          console.log('Marketplace icon dimensions:', w, 'x', h);
+          if (w !== 512 || h !== 512) throw new Error('Expected resized 512x512 icon');
+          NODE
       - name: Package with official VS Code packager
         working-directory: vscode-extension
         run: npm run package:vsix
@@ -50,7 +63,7 @@ jobs:
           if-no-files-found: error
 
   publish-vscode-beta:
-    name: Publish VS Code v0.3.1 beta on GitHub
+    name: Publish VS Code v0.3.2 beta on GitHub
     # Only the reviewed main branch can publish; all 10 CI jobs must pass first.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, vscode-vsix]
@@ -58,7 +71,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: github-release-v0.3.1
+      group: github-release-v0.3.2
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -71,20 +84,20 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p 'require("./vscode-extension/package.json").version')"
-          test "$VERSION" = "0.3.1"
-          file="dist/claude-session-bridge-vscode-0.3.1.vsix"
+          test "$VERSION" = "0.3.2"
+          file="dist/claude-session-bridge-vscode-0.3.2.vsix"
           test -s "$file"
           test "$(find dist -maxdepth 1 -name '*.vsix' | wc -l)" -eq 1
           unzip -p "$file" extension/package.json |
-            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.1"||p.publisher!=="ElyesHkiri")process.exit(1)})'
-          ( cd dist && sha256sum claude-session-bridge-vscode-0.3.1.vsix > SHA256SUMS )
+            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.2"||p.publisher!=="ElyesHkiri")process.exit(1)})'
+          ( cd dist && sha256sum claude-session-bridge-vscode-0.3.2.vsix > SHA256SUMS )
       - name: Create GitHub beta release (idempotent)
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="v0.3.1"
+          tag="v0.3.2"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $tag already exists; preserving immutable release assets."
             exit 0
@@ -94,10 +107,30 @@ jobs:
             exit 1
           fi
           gh release create "$tag" \
-            dist/claude-session-bridge-vscode-0.3.1.vsix \
+            dist/claude-session-bridge-vscode-0.3.2.vsix \
             dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Claude Session Bridge v0.3.1 (VS Code beta)" \
-            --notes-file docs/releases/v0.3.1.md \
+            --title "Claude Session Bridge v0.3.2 (VS Code beta)" \
+            --notes-file docs/releases/v0.3.2.md \
             --prerelease --latest=false
+
+  dispatch-marketplace-v032:
+    name: Submit v0.3.2 to Marketplace once
+    needs: [publish-vscode-beta]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      startsWith(github.event.head_commit.message, 'release: publish VSIX v0.3.2 [marketplace-once]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Dispatch existing PAT-protected Marketplace workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run marketplace-publish.yml \
+            --repo "$GITHUB_REPOSITORY" --ref main --field release_tag=v0.3.2

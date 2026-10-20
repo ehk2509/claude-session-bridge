@@ -2,7 +2,7 @@
   "name": "claude-session-bridge-vscode",
   "displayName": "Claude Session Bridge",
   "description": "One-click guided handoff and verified backup for Claude Code VS Code sessions across accounts.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "license": "MIT",
   "publisher": "ElyesHkiri",

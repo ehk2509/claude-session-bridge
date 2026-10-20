@@ -1,18 +1,13 @@
 name: Publish VS Code extension to Marketplace (manual)
 
 on:
-  # One-time publication requested by the repository owner. After this run,
-  # remove the push trigger; normal publication remains manual.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/marketplace-publish.yml']
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Approved GitHub release tag (currently v0.3.1)'
+        description: 'Approved GitHub release tag (currently v0.3.2)'
         required: true
         type: string
-        default: 'v0.3.1'
+        default: 'v0.3.2'
 
 permissions:
   contents: read
@@ -20,19 +15,15 @@ permissions:
 jobs:
   publish:
     name: Publish verified VSIX to Marketplace (VSCE_PAT)
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' &&
-        startsWith(github.event.head_commit.message, 'release: publish VSIX v0.3.1 [marketplace-once]')))
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Validate approved release
         env:
-          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || 'v0.3.1' }}
+          REQUESTED_TAG: ${{ inputs.release_tag }}
         run: |
-          test "$REQUESTED_TAG" = "v0.3.1" || {
-            echo "::error::Only v0.3.1 can be published by this workflow. Update the reviewed workflow for future releases."
+          test "$REQUESTED_TAG" = "v0.3.2" || {
+            echo "::error::Only v0.3.2 can be published by this workflow. Update the reviewed workflow for future releases."
             exit 1
           }
       - uses: actions/checkout@v4
@@ -44,9 +35,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p dist
-          gh release download v0.3.1 \
+          gh release download v0.3.2 \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern 'claude-session-bridge-vscode-0.3.1.vsix' \
+            --pattern 'claude-session-bridge-vscode-0.3.2.vsix' \
             --pattern 'SHA256SUMS' \
             --dir dist
       - name: Verify checksum and extension identity
@@ -54,8 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
-          unzip -p dist/claude-session-bridge-vscode-0.3.1.vsix extension/package.json |
-            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.1"||p.publisher!=="ElyesHkiri")process.exit(1)})'
+          unzip -p dist/claude-session-bridge-vscode-0.3.2.vsix extension/package.json |
+            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.2"||p.publisher!=="ElyesHkiri")process.exit(1)})'
       - name: Publish to Visual Studio Marketplace
         # Mirrors Codico's proven VSCE_PAT publishing workflow.
         # vsce reads VSCE_PAT from its environment; the token is never printed or passed as a CLI argument.
@@ -68,5 +59,5 @@ jobs:
             echo "::error::Missing VSCE_PAT GitHub Actions secret. Add it to THIS repository's Actions secrets."
             exit 1
           fi
-          npx --yes @vscode/vsce@4.0.0 publish --packagePath dist/claude-session-bridge-vscode-0.3.1.vsix
+          npx --yes @vscode/vsce@4.0.0 publish --packagePath dist/claude-session-bridge-vscode-0.3.2.vsix
           echo "Marketplace publish request succeeded: ElyesHkiri.claude-session-bridge-vscode"
