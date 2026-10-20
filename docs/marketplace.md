@@ -2,7 +2,7 @@
 
 This project uses **the same GitHub Actions / Azure DevOps PAT method that published Codico**. The GitHub owner remains `ehk2509`; the *Marketplace publisher* is `ElyesHkiri`. It does **not** require Marketplace Trusted Publishing or GitHub OIDC configuration.
 
-**Target:** [GitHub beta release v0.3.2](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.2) must exist before Marketplace publication. Marketplace publication requires the owner to configure the publisher and an Actions secret, then manually run the workflow.
+**Published:** [Claude Session Bridge v0.3.2 on Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ElyesHkiri.claude-session-bridge-vscode) using the verified [v0.3.2 GitHub Release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.2). The [publishing workflow](https://github.com/ehk2509/claude-session-bridge/actions/runs/39406712652) succeeded. Marketplace search indexing may take some time; future versions are published by manually dispatching the same workflow.
 
 ## 1. Confirm the Marketplace publisher
 
