@@ -72,12 +72,12 @@ jobs:
           set -euo pipefail
           VERSION="$(node -p 'require("./vscode-extension/package.json").version')"
           test "$VERSION" = "0.3.1"
-          file="dist/claude-session-bridge-vscode-0.3.0.vsix"
+          file="dist/claude-session-bridge-vscode-0.3.1.vsix"
           test -s "$file"
           test "$(find dist -maxdepth 1 -name '*.vsix' | wc -l)" -eq 1
           unzip -p "$file" extension/package.json |
             node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.1"||p.publisher!=="ElyesHkiri")process.exit(1)})'
-          ( cd dist && sha256sum claude-session-bridge-vscode-0.3.0.vsix > SHA256SUMS )
+          ( cd dist && sha256sum claude-session-bridge-vscode-0.3.1.vsix > SHA256SUMS )
       - name: Create GitHub beta release (idempotent)
         shell: bash
         env:
@@ -94,7 +94,7 @@ jobs:
             exit 1
           fi
           gh release create "$tag" \
-            dist/claude-session-bridge-vscode-0.3.0.vsix \
+            dist/claude-session-bridge-vscode-0.3.1.vsix \
             dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
