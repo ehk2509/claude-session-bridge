@@ -1,5 +1,13 @@
 # Changelog
 
+## Terminal CLI npm patch 0.2.1 — 2026-10-20
+
+- Fix the npm-installed `csbridge` executable silently exiting because the CLI's entry guard compared the npm symlink path with the source module path.
+- Resolve canonical entry-point paths before launching, preserving no-side-effect behavior when the module is imported.
+- Normalize the npm `bin.csbridge` path, add symlink regression coverage, and require a real global tarball installation and executable smoke test before publishing.
+- Publish as **v0.2.1** rather than overwriting the immutable npm v0.2.0 package.
+
+
 ## CLI npm distribution — 2026-10-20
 
 - Prepare the independent `claude-session-bridge-cli@0.2.0` public npm package with the `csbridge` executable, a strict `src/` file allowlist, package metadata and npm registry publication checks.

@@ -8,7 +8,7 @@ Marketplace publisher: **`ElyesHkiri`** · Extension ID: `ElyesHkiri.claude-sess
 
 Claude Session Bridge is an open-source, local-first companion for the official **Anthropic Claude Code** extension. It discovers saved conversations for the current workspace, makes a private backup, guides you through signing in to your other account, and asks Claude Code to reopen the same session.
 
-> **VS Code extension: v0.3.2 (beta)** · **CLI: v0.2.0 (beta)**
+> **VS Code extension: v0.3.2 (beta)** · **CLI: v0.2.1 (beta)**
 >
 > Tested successfully by one user on Linux with two Claude accounts: the previous conversation appeared and Claude continued its earlier task. This does **not** guarantee every account, platform, remote environment, or Claude Code version will support the same handoff.
 
@@ -82,11 +82,11 @@ Handoffs survive a VS Code window reload. A successful handoff **keeps its priva
 
 **Old conversations were compacted.** Claude Code may retain a *summary* of earlier turns after context compaction. The bridge cannot restore discarded model context or guarantee all historic tool calls are accessible to the model.
 
-## Terminal CLI — v0.2.0 beta
+## Terminal CLI — v0.2.1 beta
 
-**npm package:** [`claude-session-bridge-cli`](https://www.npmjs.com/package/claude-session-bridge-cli) (separate from the VS Code Marketplace extension).
+**npm package:** [`claude-session-bridge-cli`](https://www.npmjs.com/package/claude-session-bridge-cli) (separate from the VS Code Marketplace extension). Use **v0.2.1 or later**: v0.2.0 published successfully but its `csbridge` entry point did not run when installed through npm's symlink.
 
-After the first verified npm publication, install globally with:
+Install from npm using:
 
 ```bash
 npm install --global claude-session-bridge-cli

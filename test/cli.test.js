@@ -261,3 +261,17 @@ test('verify rejects paths outside the private backup tree', async t => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /managed/);
 });
+
+test('CLI executes when launched via npm-style binary symlink', async t => {
+  const f = await fixture(t);
+  const shim = path.join(f.root, 'csbridge');
+  try { await fs.symlink(bin, shim, 'file'); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) { t.skip('Symlink unavailable on this platform'); return; }
+    throw error;
+  }
+  const result = spawnSync(process.execPath, [shim, 'help'], { encoding: 'utf8', cwd: f.project });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Claude Session Bridge CLI v0\.2\.1/);
+  assert.match(result.stdout, /csbridge quick/);
+});
