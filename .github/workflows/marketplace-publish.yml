@@ -1,6 +1,11 @@
 name: Publish VS Code extension to Marketplace (manual)
 
 on:
+  # One-time publication requested by the repository owner. After this run,
+  # remove the push trigger; normal publication remains manual.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/marketplace-publish.yml']
   workflow_dispatch:
     inputs:
       release_tag:
@@ -15,7 +20,7 @@ permissions:
 jobs:
   publish:
     name: Publish verified VSIX to Marketplace (VSCE_PAT)
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'release: publish VSIX v0.3.1 [marketplace-once]')))
     runs-on: ubuntu-latest
     steps:
       - name: Validate approved release
