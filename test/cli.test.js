@@ -83,8 +83,12 @@ test('switch auto-matches project and resumes a fork under target profile', asyn
   assert.equal(await f.active(), 'personal');
   assert.equal(await fs.readFile(source.filename, 'utf8'), source.contents);
   const files = await fs.readdir(path.join(f.state, 'backups', 'work', '-my-app'));
-  assert.equal(files.length, 1);
-  const backup = path.join(f.state, 'backups', 'work', '-my-app', files[0]);
+  assert.equal(files.length, 2);
+  const snapshot = files.find(name => name.endsWith('.jsonl'));
+  assert.ok(snapshot);
+  const backup = path.join(f.state, 'backups', 'work', '-my-app', snapshot);
+  assert.ok(files.includes(snapshot + '.sha256.json'));
+  assert.equal(f.run('verify', backup).status, 0);
   assert.equal(await fs.readFile(backup, 'utf8'), source.contents);
   if (process.platform !== 'win32') assert.equal((await fs.stat(backup)).mode & 0o777, 0o600);
 });
@@ -153,4 +157,107 @@ test('doctor and claude delegated auth command', async t => {
   assert.match(f.run('doctor').stdout, /mock-claude 2\.1\.0/);
   assert.equal(f.run('auth', 'personal').status, 0);
   assert.deepEqual(JSON.parse(await fs.readFile(f.trace, 'utf8')).args, ['auth', 'login']);
+});
+
+
+test('quick requires explicit consent in non-TTY mode; --yes starts a verified pending handoff', async t => {
+  const f = await fixture(t); f.register();
+  await f.writeSession();
+  const rejected = f.run('quick', 'personal', '--from', 'work');
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /--yes/);
+  await assert.rejects(fs.stat(f.trace), { code: 'ENOENT' });
+  const ok = f.run('quick', 'personal', '--from', 'work', '--yes');
+  assert.equal(ok.status, 0, ok.stderr);
+  const state = JSON.parse(await fs.readFile(path.join(f.state, 'pending-handoff.json'), 'utf8'));
+  assert.equal(state.source, 'work');
+  assert.equal(state.target, 'personal');
+  assert.equal(state.sessionId, f.id);
+  assert.equal(f.run('pending').status, 0);
+  assert.match(f.run('pending').stdout, /backup-integrity: Private backup SHA-256 verified/);
+});
+
+test('pending state survives relaunch and requires verified completion', async t => {
+  const f = await fixture(t); f.register(); await f.writeSession();
+  assert.equal(f.run('switch', 'personal', '--from', 'work').status, 0);
+  assert.equal(f.run('switch', 'work', '--from', 'personal').status, 1);
+  assert.match(f.run('finish').stderr, /--confirmed/);
+  assert.equal(f.run('finish', '--confirmed').status, 0);
+  assert.match(f.run('pending').stdout, /No pending handoff/);
+  const files = await fs.readdir(path.join(f.state, 'backups', 'work', '-my-app'));
+  assert.ok(files.some(name => name.endsWith('.jsonl')));
+});
+
+test('tampering a snapshot invalidates verify, pending, retry and finish; no Claude relaunch', async t => {
+  const f = await fixture(t); f.register();
+  await f.writeSession();
+  assert.equal(f.run('quick', 'personal', '--from', 'work', '--yes').status, 0);
+  const pending = JSON.parse(await fs.readFile(path.join(f.state, 'pending-handoff.json'), 'utf8'));
+  assert.equal(f.run('verify', pending.backup).status, 0);
+  await fs.appendFile(pending.backup, 'malicious-data');
+  await fs.rm(f.trace);
+  assert.equal(f.run('verify', pending.backup).status, 1);
+  const diag = f.run('pending');
+  assert.equal(diag.status, 1);
+  assert.match(diag.stdout, /backup-integrity/);
+  assert.equal(diag.stdout.includes('test prompt'), false);
+  assert.equal(diag.stdout.includes(f.root), false);
+  assert.equal(f.run('retry').status, 1);
+  await assert.rejects(fs.stat(f.trace), { code: 'ENOENT' });
+  assert.equal(f.run('finish', '--confirmed').status, 1);
+  assert.ok((await fs.stat(path.join(f.state, 'pending-handoff.json'))).isFile());
+});
+
+test('retry resumes the same snapshot after failed Claude process; no backup duplication', async t => {
+  const f = await fixture(t); f.register();
+  const original = await f.writeSession();
+  const failed = f.runEnv({ MOCK_CLAUDE_EXIT: '7' }, 'switch', 'personal', '--from', 'work');
+  assert.equal(failed.status, 7);
+  assert.equal(await f.active(), 'work');
+  const pending = JSON.parse(await fs.readFile(path.join(f.state, 'pending-handoff.json'), 'utf8'));
+  const retry = f.run('retry');
+  assert.equal(retry.status, 0, retry.stderr);
+  assert.equal(await f.active(), 'personal');
+  const trace = JSON.parse(await fs.readFile(f.trace, 'utf8'));
+  assert.deepEqual(trace.args, ['--resume', original.filename, '--fork-session']);
+  assert.equal(trace.config, f.personal);
+  const after = JSON.parse(await fs.readFile(path.join(f.state, 'pending-handoff.json'), 'utf8'));
+  assert.equal(after.backup, pending.backup);
+  const files = await fs.readdir(path.dirname(pending.backup));
+  assert.equal(files.length, 2);
+  assert.equal(f.run('finish', '--confirmed').status, 0);
+});
+
+test('an invalid pending record blocks new handoffs rather than being overwritten', async t => {
+  const f = await fixture(t); f.register(); await f.writeSession();
+  await fs.mkdir(f.state, { recursive: true });
+  const pendingFile = path.join(f.state, 'pending-handoff.json');
+  await fs.writeFile(pendingFile, '{"version":99,"backup":"/tmp/wrong"}');
+  const result = f.run('switch', 'personal', '--from', 'work');
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /metadata is invalid/);
+  assert.equal(await fs.readFile(pendingFile, 'utf8'), '{"version":99,"backup":"/tmp/wrong"}');
+  await assert.rejects(fs.stat(f.trace), { code: 'ENOENT' });
+});
+
+test('missing source warns without showing transcript contents; retry requires original source', async t => {
+  const f = await fixture(t); f.register();
+  const source = await f.writeSession();
+  assert.equal(f.run('switch', 'personal', '--from', 'work').status, 0);
+  await fs.rm(source.filename);
+  const report = f.run('pending');
+  assert.equal(report.status, 0);
+  assert.match(report.stdout, /source-session/);
+  assert.match(report.stdout, /WARNING/);
+  assert.equal(report.stdout.includes('test prompt'), false);
+  assert.equal(f.run('retry').status, 1);
+  assert.match(f.run('retry').stderr, /not safe to retry/);
+});
+
+test('verify rejects paths outside the private backup tree', async t => {
+  const f = await fixture(t); f.register();
+  const session = await f.writeSession();
+  const result = f.run('verify', session.filename);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /managed/);
 });
