@@ -1,5 +1,11 @@
 # Changelog
 
+## CLI npm distribution — 2026-10-20
+
+- Prepare the independent `claude-session-bridge-cli@0.2.0` public npm package with the `csbridge` executable, a strict `src/` file allowlist, package metadata and npm registry publication checks.
+- Name differs from `claude-session-bridge`, which belongs to an unrelated npm project. The VS Code extension remains `ElyesHkiri.claude-session-bridge-vscode` v0.3.2.
+
+
 ## Terminal CLI 0.2.0 — 2026-10-20
 
 - SHA-256 checksum manifests for private backups and explicit `csbridge verify`.
