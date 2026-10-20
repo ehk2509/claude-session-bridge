@@ -60,6 +60,22 @@ jobs:
           if (forbidden.length) throw new Error('Unexpected npm files: ' + forbidden.join(', '));
           console.log('Validated', files.length, 'npm package files');
           NODE
+      - name: Smoke-test published npm CLI (only if v0.2.0 is available)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if npm view claude-session-bridge-cli@0.2.0 version --json >/tmp/npm-version.json 2>/dev/null; then
+            node -e 'const fs=require("fs");const v=JSON.parse(fs.readFileSync("/tmp/npm-version.json"));if(v!=="0.2.0")process.exit(1)'
+            npm view claude-session-bridge-cli@0.2.0 bin --json >/tmp/npm-bin.json
+            node -e 'const fs=require("fs");const b=JSON.parse(fs.readFileSync("/tmp/npm-bin.json"));if(b?.csbridge!=="src/cli.js")throw Error("Published npm CLI binary mapping is absent or unexpected");'
+            dest="$(mktemp -d)"
+            npm install --global --prefix "$dest" claude-session-bridge-cli@0.2.0
+            "$dest/bin/csbridge" help > /tmp/csbridge-help.txt
+            grep -q "Claude Session Bridge CLI v0.2.0" /tmp/csbridge-help.txt
+            echo "Published npm package installs a working csbridge executable."
+          else
+            echo "Version 0.2.0 is not yet visible; first-publish registry availability check will decide."
+          fi
       - name: Check npm registry name ownership or availability
         shell: bash
         run: |
