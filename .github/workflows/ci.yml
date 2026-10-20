@@ -30,6 +30,58 @@ jobs:
       - run: npm --prefix vscode-extension run check
       - run: npm pack --dry-run
 
+
+  npm-cli-package:
+    name: Validate npm CLI tarball and registry name
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - run: npm ci
+      - name: Validate exact public package contents
+        shell: bash
+        run: |
+          npm pack --dry-run --json > /tmp/csbridge-pack.json
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const files = JSON.parse(fs.readFileSync('/tmp/csbridge-pack.json','utf8'))[0].files.map(x => x.path);
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (p.name !== 'claude-session-bridge-cli' || p.version !== '0.2.0' || p.private ||
+              p.bin?.csbridge !== './src/cli.js') throw new Error('Unexpected npm package metadata');
+          for (const required of ['package.json', 'src/cli.js', 'src/core.js', 'src/recovery.js', 'README.md', 'LICENSE']) {
+            if (!files.includes(required)) throw new Error('Required npm file missing: ' + required);
+          }
+          const forbidden = files.filter(f => f.startsWith('test/') || f.startsWith('.github/') ||
+            f.startsWith('vscode-extension/') || f.includes('.env') || f.includes('secret') ||
+            !['package.json','package-lock.json','README.md','LICENSE','src/cli.js','src/core.js','src/recovery.js'].includes(f));
+          if (forbidden.length) throw new Error('Unexpected npm files: ' + forbidden.join(', '));
+          console.log('Validated', files.length, 'npm package files');
+          NODE
+      - name: Check npm registry name ownership or availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -o /tmp/csbridge-registry.json -w '%{http_code}' 'https://registry.npmjs.org/claude-session-bridge-cli')
+          case "$status" in
+            404) echo 'CLI-specific npm package name is available for first publication.' ;;
+            200)
+              node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const p = JSON.parse(fs.readFileSync('/tmp/csbridge-registry.json','utf8'));
+          const url = typeof p.repository === 'string' ? p.repository : p.repository?.url;
+          if (!url || !/github\.com[:/]ehk2509\/claude-session-bridge(?:\.git)?$/.test(url)) {
+            throw new Error('npm name already occupied by a different or unverifiable project');
+          }
+          console.log('Existing npm package links to this GitHub repository.');
+          NODE
+              ;;
+            *) echo "::error::npm registry availability check returned HTTP $status"; exit 1 ;;
+          esac
+
   vscode-vsix:
     name: Package VS Code VSIX
     runs-on: ubuntu-latest
@@ -114,3 +166,39 @@ jobs:
             --title "Claude Session Bridge v0.3.2 (VS Code beta)" \
             --notes-file docs/releases/v0.3.2.md \
             --prerelease --latest=false
+
+  publish-npm-first:
+    name: Publish CLI 0.2.0 to npm (first release)
+    needs: [test, npm-cli-package]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      startsWith(github.event.head_commit.message, 'release: npm publish claude-session-bridge-cli@0.2.0 [once]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: npm-claude-session-bridge-cli-0.2.0
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - run: npm ci
+      - name: Verify npm bootstrap token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$NODE_AUTH_TOKEN" ]]; then
+            echo "::error::NPM_TOKEN secret is required for the first npm publication. Create a granular npm publish token, then add it under this repo's GitHub Actions secrets."
+            exit 1
+          fi
+      - name: Publish reviewed CLI package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
