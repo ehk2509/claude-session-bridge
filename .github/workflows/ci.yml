@@ -50,7 +50,7 @@ jobs:
           const files = JSON.parse(fs.readFileSync('/tmp/csbridge-pack.json','utf8'))[0].files.map(x => x.path);
           const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           if (p.name !== 'claude-session-bridge-cli' || p.version !== '0.2.0' || p.private ||
-              p.bin?.csbridge !== './src/cli.js') throw new Error('Unexpected npm package metadata');
+              p.bin?.csbridge !== 'src/cli.js') throw new Error('Unexpected npm package metadata');
           for (const required of ['package.json', 'src/cli.js', 'src/core.js', 'src/recovery.js', 'README.md', 'LICENSE']) {
             if (!files.includes(required)) throw new Error('Required npm file missing: ' + required);
           }
