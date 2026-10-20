@@ -1,5 +1,12 @@
 # Changelog
 
+## VS Code extension 0.3.2 — 2026-10-20
+
+- Resize the approved neon bridge icon to **512 × 512** with transparency. Marketplace rejected the 1254 × 1254 logo in v0.3.1 because it exceeded the maximum 1024 × 1024 icon dimensions.
+- Add CI enforcement of icon dimensions and release a fresh immutable v0.3.2 VSIX under publisher `ElyesHkiri`.
+- No change to Claude Code account handoff, local backups or recovery diagnostics.
+
+
 ## VS Code extension 0.3.1 — 2026-10-20
 
 - Register the new neon session-bridge PNG logo at `vscode-extension/media/icon.png` for VS Code / Marketplace.
