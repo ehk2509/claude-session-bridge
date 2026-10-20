@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Claude Session Bridge CLI: no credential files are read or copied. */
 import fs from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import * as readline from 'node:readline/promises';
@@ -15,7 +16,7 @@ import { createVerifiedBackup, verifyBackup, readPending, savePending,
 const BLOCKED_AUTH_ENV = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
 
 function usage() {
-  console.log(`Claude Session Bridge CLI v0.2.0
+  console.log(`Claude Session Bridge CLI v0.2.1
 
 Account profiles:
   csbridge profiles add <name> <config-dir>   Register an isolated Claude config
@@ -289,6 +290,13 @@ export async function main(argv) {
   throw new Error(`Unknown command '${command}'. Run csbridge help.`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// npm installs 'csbridge' as a symlink. Compare canonical paths so the
+// terminal entry point executes, while importing this module stays inert.
+let invokedAsCli = false;
+if (process.argv[1]) {
+  try { invokedAsCli = realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+  catch { /* Not a file executed as this entry point. */ }
+}
+if (invokedAsCli) {
   main(process.argv.slice(2)).catch(error => { console.error(`Error: ${error.message}`); process.exitCode = 1; });
 }
