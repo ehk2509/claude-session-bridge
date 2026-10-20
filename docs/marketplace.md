@@ -1,28 +1,61 @@
-# Visual Studio Marketplace publication — preparation
+# Publish Claude Session Bridge to the VS Code Marketplace
 
-The **GitHub v0.3.0 beta release** and **Visual Studio Marketplace publishing** are separate steps. GitHub releases are built automatically after `main` passes CI. Marketplace publishing is **manual and requires explicit authorization**; the workflow does not run on pushes or tags.
+This project uses **the same GitHub Actions / Azure DevOps PAT method that published Codico**. It does **not** require Marketplace Trusted Publishing or GitHub OIDC configuration.
 
-## One-time publisher setup
+**Status:** [GitHub beta release v0.3.0](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0) is published. Marketplace publication requires the owner to configure the publisher and an Actions secret, then manually run the workflow.
 
-1. Sign in to [Visual Studio Marketplace publisher management](https://marketplace.visualstudio.com/manage) with the Microsoft identity that owns the publisher.
-2. Confirm the publisher ID is **`ehk2509`**, matching `vscode-extension/package.json`. If a different existing publisher should be used, update and review the manifest before publishing; do not guess.
-3. In Marketplace publisher management, configure a **trusted GitHub Actions publishing policy** for:
-   - GitHub repository: `ehk2509/claude-session-bridge`
-   - Workflow: `.github/workflows/marketplace-publish.yml`
-   - Branch/ref: `main` (and any environment constraints required by the trust policy)
-4. Under **GitHub → Settings → Environments**, create `vscode-marketplace`, restrict deployments to `main` and configure required reviewers before first use. If the environment does not exist, GitHub may create it without reviewer protections.
-5. Confirm the extension description, publisher rights, open-source license, README and expected Marketplace listing prior to publication.
+## 1. Confirm the Marketplace publisher
 
-[VS Code official publishing documentation](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) · [Microsoft vsce trusted publishing documentation](https://github.com/microsoft/vscode-vsce#trusted-publishing)
+Open [Marketplace publisher management](https://marketplace.visualstudio.com/manage/publishers/) and sign in with your Microsoft account. Create or select publisher **`ehk2509`**.
 
-## First publish (after a real v0.3.0 smoke test)
+The VSIX's package manifest already uses:
+- Publisher ID: `ehk2509`
+- Extension name: `claude-session-bridge-vscode`
+- Version: `0.3.0`
+- Expected listing: [`ehk2509.claude-session-bridge-vscode`](https://marketplace.visualstudio.com/items?itemName=ehk2509.claude-session-bridge-vscode)
 
-1. Verify [the GitHub v0.3.0 release](https://github.com/ehk2509/claude-session-bridge/releases/tag/v0.3.0) exists and includes **the VSIX and SHA256SUMS**.
-2. In VS Code, test Quick Account Handoff with two Claude accounts, confirm the original conversation appears and work can continue, and check the recovery diagnosis command.
-3. From GitHub, go to **Actions → Publish VS Code extension to Marketplace (manual) → Run workflow** on `main`, using tag `v0.3.0`.
-4. Approve the `vscode-marketplace` environment if your protection rules require it.
-5. Inspect the workflow logs, then verify the extension version **0.3.0** in the [Marketplace publisher dashboard](https://marketplace.visualstudio.com/manage) and via a fresh VS Code Marketplace search.
+**Codico uses a different publisher, `codico`.** Do not paste `codico` into this extension's manifest unless you explicitly intend to publish it under that publisher and rebuild the release VSIX.
 
-The workflow downloads **exactly the approved GitHub release VSIX**, verifies its checksum, and invokes `@vscode/vsce@4.0.0 publish --packagePath ... --oidc`. It uses GitHub's short-lived OIDC token to exchange for Marketplace credentials, not long-lived PAT secrets. Publishing will fail until a matching Marketplace trusted-publisher policy exists. It does **not** silently fall back to a PAT.
+## 2. Create or reuse an Azure DevOps PAT
 
-**Do not paste any access tokens or local Claude transcript backups in GitHub issues.**
+This is the same approach used for Codico:
+
+1. Open [Azure DevOps Personal Access Tokens](https://dev.azure.com/_usersSettings/tokens) and sign in with a Microsoft identity authorized to publish under `ehk2509`.
+2. Create a new token, or reuse your existing Codico PAT **only if it still works and that Microsoft identity has publishing rights on `ehk2509`**.
+3. For a new token, choose a short expiration, the organization coverage required by Marketplace (Microsoft's current VS Code extension publishing guide specifies **All accessible organizations**), and **Custom defined → Show all scopes → Marketplace → Manage**.
+4. Copy the PAT securely. Do not put it into a source file, discussion, commit, shell history, or chat.
+
+> **Important:** Microsoft's publishing documentation says that **global Azure DevOps PATs retire December 1, 2026**. This reproduces the Codico workflow for now, but future releases should migrate to Microsoft Entra ID authentication. See the [official VS Code publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
+
+## 3. Add the secret to this repository
+
+Open [Claude Session Bridge → GitHub Actions secrets](https://github.com/ehk2509/claude-session-bridge/settings/secrets/actions).
+
+Select **New repository secret** and use the **exact** name:
+
+```text
+VSCE_PAT
+```
+
+Paste the PAT as the *secret value* and save it. The secret configured in the **Codico** repository is **not automatically shared** with the Claude Session Bridge repository. GitHub and ChatGPT cannot read its saved value back.
+
+No `VSCE_PA`, `OVSX_PAT`, OIDC trust policy or `vscode-marketplace` environment is required for this Codico-style workflow.
+
+## 4. Publish manually using GitHub Actions
+
+After verifying the v0.3.0 VSIX works in VS Code:
+
+1. Visit [Publish VS Code extension to Marketplace (manual)](https://github.com/ehk2509/claude-session-bridge/actions/workflows/marketplace-publish.yml).
+2. Choose **Run workflow** → Branch **`main`**, release tag **`v0.3.0`** → **Run workflow**.
+3. The workflow downloads the **already published** GitHub release VSIX and its `SHA256SUMS`, verifies the package integrity and publisher ID, then runs `@vscode/vsce publish --packagePath` with `VSCE_PAT` injected securely from GitHub Actions.
+4. Inspect the workflow outcome and check the [Marketplace listing](https://marketplace.visualstudio.com/items?itemName=ehk2509.claude-session-bridge-vscode). Marketplace processing may take time.
+
+The workflow runs **only when manually dispatched from `main`**, and hard-checks the release tag and package identity. It does not automatically republish on every push.
+
+If version `0.3.0` has already been published in Marketplace, don't run the same publish again. Bump the version and create a fresh verified VSIX/release for the next publication.
+
+## Security notes
+
+- A GitHub Actions PAT is a sensitive credential; use minimal expiry and rotate/revoke it when needed.
+- Do not upload your local Claude session JSONL backups to GitHub or Marketplace.
+- The CLI remains version `0.1.0`; only the VS Code companion is at `0.3.0`.
