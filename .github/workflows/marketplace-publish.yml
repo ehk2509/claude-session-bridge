@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Approved GitHub release tag (currently v0.3.0)'
+        description: 'Approved GitHub release tag (currently v0.3.1)'
         required: true
         type: string
-        default: 'v0.3.0'
+        default: 'v0.3.1'
 
 permissions:
   contents: read
@@ -22,8 +22,8 @@ jobs:
         env:
           REQUESTED_TAG: ${{ inputs.release_tag }}
         run: |
-          test "$REQUESTED_TAG" = "v0.3.0" || {
-            echo "::error::Only v0.3.0 can be published by this workflow. Update the reviewed workflow for future releases."
+          test "$REQUESTED_TAG" = "v0.3.1" || {
+            echo "::error::Only v0.3.1 can be published by this workflow. Update the reviewed workflow for future releases."
             exit 1
           }
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p dist
-          gh release download v0.3.0 \
+          gh release download v0.3.1 \
             --repo "$GITHUB_REPOSITORY" \
             --pattern 'claude-session-bridge-vscode-0.3.0.vsix' \
             --pattern 'SHA256SUMS' \
@@ -46,7 +46,7 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum --check SHA256SUMS)
           unzip -p dist/claude-session-bridge-vscode-0.3.0.vsix extension/package.json |
-            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.0"||p.publisher!=="ehk2509")process.exit(1)})'
+            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.0"||p.publisher!=="ElyesHkiri")process.exit(1)})'
       - name: Publish to Visual Studio Marketplace
         # Mirrors Codico's proven VSCE_PAT publishing workflow.
         # vsce reads VSCE_PAT from its environment; the token is never printed or passed as a CLI argument.
@@ -60,4 +60,4 @@ jobs:
             exit 1
           fi
           npx --yes @vscode/vsce@4.0.0 publish --packagePath dist/claude-session-bridge-vscode-0.3.0.vsix
-          echo "Marketplace publish request succeeded: ehk2509.claude-session-bridge-vscode"
+          echo "Marketplace publish request succeeded: ElyesHkiri.claude-session-bridge-vscode"

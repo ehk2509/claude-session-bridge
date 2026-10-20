@@ -50,7 +50,7 @@ jobs:
           if-no-files-found: error
 
   publish-vscode-beta:
-    name: Publish VS Code v0.3.0 beta on GitHub
+    name: Publish VS Code v0.3.1 beta on GitHub
     # Only the reviewed main branch can publish; all 10 CI jobs must pass first.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, vscode-vsix]
@@ -58,7 +58,7 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: github-release-v0.3.0
+      group: github-release-v0.3.1
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -71,12 +71,12 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p 'require("./vscode-extension/package.json").version')"
-          test "$VERSION" = "0.3.0"
+          test "$VERSION" = "0.3.1"
           file="dist/claude-session-bridge-vscode-0.3.0.vsix"
           test -s "$file"
           test "$(find dist -maxdepth 1 -name '*.vsix' | wc -l)" -eq 1
           unzip -p "$file" extension/package.json |
-            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.0"||p.publisher!=="ehk2509")process.exit(1)})'
+            node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const p=JSON.parse(s);if(p.name!=="claude-session-bridge-vscode"||p.version!=="0.3.1"||p.publisher!=="ElyesHkiri")process.exit(1)})'
           ( cd dist && sha256sum claude-session-bridge-vscode-0.3.0.vsix > SHA256SUMS )
       - name: Create GitHub beta release (idempotent)
         shell: bash
@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="v0.3.0"
+          tag="v0.3.1"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $tag already exists; preserving immutable release assets."
             exit 0
@@ -98,6 +98,6 @@ jobs:
             dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Claude Session Bridge v0.3.0 (VS Code beta)" \
-            --notes-file docs/releases/v0.3.0.md \
+            --title "Claude Session Bridge v0.3.1 (VS Code beta)" \
+            --notes-file docs/releases/v0.3.1.md \
             --prerelease --latest=false
