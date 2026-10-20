@@ -1,5 +1,14 @@
 # Changelog
 
+## Terminal CLI 0.2.0 — 2026-10-20
+
+- SHA-256 checksum manifests for private backups and explicit `csbridge verify`.
+- Persistent pending handoffs across terminal restarts, safe `csbridge pending` diagnostics, `csbridge retry`, and `csbridge finish --confirmed`.
+- `csbridge quick` previews the current-project saved session and requires user confirmation; noninteractive use requires `--yes`.
+- Tests cover tampering, interrupted runs, missing source transcripts, invalid metadata, confirmation and recovery.
+- **No npm publication or real CLI cross-account smoke test claimed.** VS Code extension remains v0.3.2.
+
+
 ## VS Code extension 0.3.2 — 2026-10-20
 
 - Resize the approved neon bridge icon to **512 × 512** with transparency. Marketplace rejected the 1254 × 1254 logo in v0.3.1 because it exceeded the maximum 1024 × 1024 icon dimensions.

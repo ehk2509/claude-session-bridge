@@ -8,7 +8,7 @@ Marketplace publisher: **`ElyesHkiri`** · Extension ID: `ElyesHkiri.claude-sess
 
 Claude Session Bridge is an open-source, local-first companion for the official **Anthropic Claude Code** extension. It discovers saved conversations for the current workspace, makes a private backup, guides you through signing in to your other account, and asks Claude Code to reopen the same session.
 
-> **VS Code extension: v0.3.2 (beta)** · **CLI: v0.1.0 (beta)**
+> **VS Code extension: v0.3.2 (beta)** · **CLI: v0.2.0 (beta)**
 >
 > Tested successfully by one user on Linux with two Claude accounts: the previous conversation appeared and Claude continued its earlier task. This does **not** guarantee every account, platform, remote environment, or Claude Code version will support the same handoff.
 
@@ -82,31 +82,38 @@ Handoffs survive a VS Code window reload. A successful handoff **keeps its priva
 
 **Old conversations were compacted.** Claude Code may retain a *summary* of earlier turns after context compaction. The bridge cannot restore discarded model context or guarantee all historic tool calls are accessible to the model.
 
-## Optional terminal CLI (v0.1.0)
+## Terminal CLI — v0.2.0 beta
 
-Use the CLI if you work in a terminal or intentionally manage **separate Claude configuration directories** for multiple accounts. It operates independently from the native VS Code chat-panel handoff.
+Use the **separate Node.js CLI** for profile-aware terminal Claude Code sessions across independently signed-in accounts. The Marketplace VS Code extension does **not** install the `csbridge` command, and the CLI remains a **private npm package** available from the GitHub repository.
 
-Requirements: Node.js **20+**, Claude Code CLI on your `PATH`, and account profiles already authenticated in their respective config directories.
+Requirements: Node.js 20+, official `claude` CLI on your PATH, and accounts authenticated in separate configuration directories.
 
 ```bash
 git clone https://github.com/ehk2509/claude-session-bridge.git
 cd claude-session-bridge
-npm ci
-npm link
+npm ci && npm link
 
 csbridge profiles add work ~/.claude
 csbridge profiles add personal ~/.claude-personal
 csbridge auth personal
 
 cd /path/to/my-project
-csbridge sessions work
-# Finish and close the source Claude session first.
-csbridge switch personal --from work
+csbridge quick personal --from work
 ```
 
-The CLI creates a private transcript backup, then delegates resumption to Claude Code using `--resume <absolute-transcript-path> --fork-session` with the destination account's `CLAUDE_CONFIG_DIR`. Unlike the VS Code UI workflow, **this runs Claude Code in a terminal**. You can also use `csbridge doctor`, `csbridge backup latest --from work`, and `csbridge resume <session-id> --from work --to personal`.
+**Close the original Claude Code chat before switching.** `quick` proposes the most recently saved conversation for this project and asks for confirmation. For **noninteractive scripts only**, use `--yes` after independently checking the proposed session. The tool creates a private snapshot with an accompanying SHA-256 checksum manifest, stores a pending record, and delegates the fork to Claude Code.
 
-The root npm package remains **private** and versioned `0.1.0`; do not confuse that version with the `v0.3.2` VS Code extension.
+After the account switch, inspect earlier messages and ask Claude to continue the previous task. Only then confirm:
+
+```bash
+csbridge pending              # integrity check and safe diagnostics
+csbridge retry                # retry interrupted native resume; reuse the backup
+csbridge finish --confirmed   # explicitly mark continuity restored
+```
+
+Other commands include `csbridge sessions`, `csbridge backup latest --from work`, `csbridge verify <managed-backup-path>`, `csbridge switch personal --from work`, and `csbridge doctor`. The existing `switch` command remains compatible; `quick` adds an explicit selection confirmation.
+
+**Limits:** The CLI does not copy credentials, does not switch Claude authentication automatically, and never modifies source transcripts. It cannot guarantee every Claude Code version accepts a native resume. The VS Code companion was tested with two accounts; the **CLI cross-account path currently has mock-based automated tests**, not a verified live account-to-account test. A successful CLI process exit does **not** automatically mark history restored.
 
 ## Security and limitations
 

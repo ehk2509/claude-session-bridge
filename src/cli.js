@@ -3,16 +3,19 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import * as readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
-  backupSession, bridgeHome, discoverSessions, expandHome, findSession,
+  bridgeHome, discoverSessions, expandHome, findSession,
   getProfile, matchCwd, parseCommand, readRegistry, registerProfile, saveRegistry
 } from './core.js';
+import { createVerifiedBackup, verifyBackup, readPending, savePending,
+  completePending, diagnosePending, safeReport } from './recovery.js';
 
 const BLOCKED_AUTH_ENV = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
 
 function usage() {
-  console.log(`Claude Session Bridge v0.1.0
+  console.log(`Claude Session Bridge CLI v0.2.0
 
 Account profiles:
   csbridge profiles add <name> <config-dir>   Register an isolated Claude config
@@ -26,7 +29,12 @@ Session handoff:
   csbridge sessions [profile] [--cwd DIR] [--limit N]
   csbridge resume <id-prefix|latest> --from A --to B [--cwd DIR]
   csbridge switch <target> [--from A] [--session ID] [--cwd DIR]
+  csbridge quick <target> [--from A] [--session ID] [--cwd DIR] [--yes]
   csbridge backup <id-prefix|latest> --from A
+  csbridge verify <managed-backup-path>
+  csbridge pending                 Check local handoff and SHA-256 integrity
+  csbridge retry                   Retry saved handoff (no new backup)
+  csbridge finish --confirmed      Mark restored only after checking history
   csbridge doctor
 
 Example:
@@ -39,6 +47,8 @@ Example:
 A handoff makes a private backup, then uses Claude Code's native
 --resume <absolute-transcript-path> --fork-session. Close the source
 session first. The original transcript and accounts remain untouched.
+Quick requires confirmation (or --yes for explicit automation).
+Pending handoffs survive process exits. Confirm continuity before finish.
 `);
 }
 
@@ -84,14 +94,53 @@ async function projectDirectory(opt, session) {
 }
 
 async function handoff(registry, session, target, cwdFlag) {
+  if (await readPending()) throw new Error('A handoff is pending. Run csbridge pending / retry / finish before starting another.');
   const destination = getProfile(registry, target);
-  if (session.profile === target) throw new Error('Source and target must be different profiles. Use csbridge start to continue within one profile.');
+  if (session.profile === target) throw new Error('Source and target must be different profiles. Use csbridge start within one profile.');
   const cwd = await projectDirectory(cwdFlag, session);
-  const backup = await backupSession(session);
-  console.log(`Source profile: ${session.profile}\nDestination profile: ${target}\nSession: ${session.id}\nProject directory: ${cwd}\nPrivate backup: ${backup}`);
-  console.log('Starting a fork. Original session remains unchanged.');
+  const backup = await createVerifiedBackup(session);
+  const pending = { version: 1, source: session.profile, target, sessionId: session.id,
+    sessionFile: session.file, cwd, backup: backup.file, createdAt: new Date().toISOString() };
+  await savePending(pending);
+  await verifyBackup(backup.file);
+  console.log('Session: ' + session.id);
+  console.log('Source: ' + session.profile + ' => destination: ' + target);
+  console.log('Private verified backup saved. Starting native Claude Code fork.');
   const status = launch(['--resume', session.file, '--fork-session'], destination, cwd);
-  if (status === 0) { registry.active = target; await saveRegistry(registry); }
+  if (status === 0) {
+    registry.active = target;
+    await saveRegistry(registry);
+  }
+  console.log('Handoff remains pending. Inspect the reopened conversation, then run csbridge finish --confirmed.');
+}
+
+async function retryHandoff(registry) {
+  const pending = await readPending();
+  if (!pending) throw new Error('No pending handoff. Start with csbridge quick or switch.');
+  const report = await diagnosePending(pending, registry);
+  console.log(safeReport(report));
+  if (report.status !== 'ready') throw new Error('Pending handoff is not safe to retry; inspect csbridge pending.');
+  const destination = getProfile(registry, pending.target);
+  const status = launch(['--resume', pending.sessionFile, '--fork-session'], destination, pending.cwd);
+  if (status === 0) {
+    registry.active = pending.target;
+    await saveRegistry(registry);
+  }
+  console.log('Handoff still pending. Confirm conversation continuity, then csbridge finish --confirmed.');
+}
+
+async function confirmSelectedSession(session, target) {
+  console.log('Source profile: ' + session.profile);
+  console.log('Destination profile: ' + target);
+  console.log('Suggested session ID: ' + session.id);
+  console.log('Recorded project: ' + (session.cwd || '(unknown)'));
+  console.log('This suggestion is based on the latest saved transcript, not the active chat.');
+  if (!process.stdin.isTTY) throw new Error('Interactive confirmation unavailable. Review the session and pass --yes explicitly.');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question('Source conversation is closed and selection correct? [y/N] ');
+    if (!/^(y|yes)$/i.test(answer.trim())) throw new Error('Handoff cancelled; source session not changed.');
+  } finally { rl.close(); }
 }
 
 export async function main(argv) {
@@ -162,7 +211,9 @@ export async function main(argv) {
     if (!options['--from']) throw new Error('backup requires --from <profile>');
     const list = await discoverSessions(registry, [options['--from']]);
     const target = pick(list, positional[0]);
-    console.log(`Backup saved: ${await backupSession(target)}`);
+    const snapshot = await createVerifiedBackup(target);
+    console.log('Private backup saved and verified: ' + snapshot.file);
+    return;
     return;
   }
   if (command === 'resume') {
@@ -172,9 +223,11 @@ export async function main(argv) {
     const list = await discoverSessions(registry, [options['--from']]);
     return handoff(registry, pick(list, positional[0]), options['--to'], options['--cwd']);
   }
-  if (command === 'switch') {
-    const { positional, options } = parseCommand(rest, ['--from', '--session', '--cwd']);
-    ensureOnly(positional, 1, 1, 'csbridge switch <target> [--from A] [--session ID] [--cwd DIR]');
+  if (command === 'switch' || command === 'quick') {
+    const { positional, options } = parseCommand(rest, ['--from', '--session', '--cwd'], ['--yes']);
+    ensureOnly(positional, 1, 1, 'csbridge ' + command + ' <target> [--from A] [--session ID] [--cwd DIR]' +
+      (command === 'quick' ? ' [--yes]' : ''));
+    if (command === 'switch' && options['--yes']) throw new Error('--yes is only valid with csbridge quick');
     const target = positional[0]; getProfile(registry, target);
     const from = options['--from'];
     const names = from ? [from] : (registry.active && registry.active !== target
@@ -188,9 +241,36 @@ export async function main(argv) {
       const providedCwd = expandHome(options['--cwd'] || process.cwd());
       const cwd = await fs.realpath(providedCwd).catch(() => providedCwd);
       session = list.find(s => matchCwd(s, cwd));
-      if (!session) throw new Error(`No session for ${cwd} in source profile(s) ${names.join(', ')}. Use csbridge sessions and --session ID, or --from PROFILE.`);
+      if (!session) throw new Error('No session for this project. Run csbridge sessions and provide --session ID or --from PROFILE.');
     }
+    if (command === 'quick' && !options['--yes']) await confirmSelectedSession(session, target);
     return handoff(registry, session, target, options['--cwd']);
+  }
+  if (command === 'pending') {
+    ensureOnly(parseCommand(rest).positional, 0, 0, 'csbridge pending');
+    const report = await diagnosePending(await readPending(), registry);
+    console.log(safeReport(report));
+    if (report.status === 'blocked') process.exitCode = 1;
+    return;
+  }
+  if (command === 'retry') {
+    ensureOnly(parseCommand(rest).positional, 0, 0, 'csbridge retry');
+    return retryHandoff(registry);
+  }
+  if (command === 'finish') {
+    const { positional, options } = parseCommand(rest, [], ['--confirmed']);
+    ensureOnly(positional, 0, 0, 'csbridge finish --confirmed');
+    if (!options['--confirmed']) throw new Error('Verify previous messages and task continuity first, then pass --confirmed.');
+    await completePending();
+    console.log('Handoff confirmed; pending record cleared. Private backup retained.');
+    return;
+  }
+  if (command === 'verify') {
+    const { positional } = parseCommand(rest);
+    ensureOnly(positional, 1, 1, 'csbridge verify <managed-backup-path>');
+    await verifyBackup(expandHome(positional[0]));
+    console.log('Private backup SHA-256 verified.');
+    return;
   }
   if (command === 'doctor') {
     ensureOnly(parseCommand(rest).positional, 0, 0, 'csbridge doctor');
@@ -203,6 +283,7 @@ export async function main(argv) {
       console.log(`  ${name}: ${st?.isDirectory() ? 'present' : 'MISSING'} — ${dir}`);
     }
     for (const key of BLOCKED_AUTH_ENV) if (process.env[key]) console.log(`WARNING: ${key} is set and prevents profile-safe launches.`);
+    console.log(safeReport(await diagnosePending(await readPending(), registry)));
     return;
   }
   throw new Error(`Unknown command '${command}'. Run csbridge help.`);
