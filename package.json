@@ -1,12 +1,25 @@
 {
   "name": "claude-session-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Safely resume local Claude Code conversations across independently authenticated account profiles",
   "type": "module",
-  "bin": { "csbridge": "./src/cli.js" },
-  "engines": { "node": ">=20" },
-  "scripts": { "test": "node --test", "check": "node --check src/cli.js && node --check src/core.js && npm test" },
-  "keywords": ["claude-code", "session", "resume", "account-switching", "developer-tools"],
+  "bin": {
+    "csbridge": "./src/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/cli.js && node --check src/core.js && node --check src/recovery.js && npm test"
+  },
+  "keywords": [
+    "claude-code",
+    "session",
+    "resume",
+    "account-switching",
+    "developer-tools"
+  ],
   "license": "MIT",
   "private": true
 }
