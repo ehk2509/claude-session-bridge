@@ -1,5 +1,7 @@
 # Claude Session Bridge
 
+<img src="vscode-extension/media/icon.png" alt="Claude Session Bridge logo" width="160" />
+
 **Continue a Claude Code conversation after switching Claude accounts — directly inside VS Code.**
 
 Claude Session Bridge is an open-source, local-first companion for the official **Anthropic Claude Code** extension. It discovers saved conversations for the current workspace, makes a private backup, guides you through signing in to your other account, and asks Claude Code to reopen the same session.

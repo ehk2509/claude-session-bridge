@@ -81,5 +81,6 @@
     "type": "git",
     "url": "https://github.com/ehk2509/claude-session-bridge.git"
   },
-  "type": "module"
+  "type": "module",
+  "icon": "media/icon.png"
 }

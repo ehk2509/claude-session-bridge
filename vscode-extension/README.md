@@ -1,5 +1,7 @@
 # Claude Session Bridge for VS Code
 
+<img src="media/icon.png" alt="Claude Session Bridge logo" width="144" />
+
 Companion extension for the official Anthropic Claude Code extension. Safely back up local sessions and reopen them after signing into another Claude account. **Your transcript files and credentials are never copied to an external service.**
 
 **v0.3.0** — Requires VS Code 1.94+, local or remote Node.js extension host, and `anthropic.claude-code`. Not affiliated with Anthropic. No Marketplace publication yet.
